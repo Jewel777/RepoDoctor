@@ -6,7 +6,7 @@ RepoDoctor is an open-source GitHub repository health scanner that analyzes publ
 
 ## 🖥️ Preview
 
-![RepoDoctor Preview](./public/repodoctor-preview.png)
+![RepoDoctor Preview]("C:\Users\mjewe\Desktop\repodoctor\public\repodoctor-preview.png.png")
 
 ## ✨ What RepoDoctor Checks
 
