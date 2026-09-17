@@ -28,7 +28,6 @@ export default async function ReportPage({ params }: Props) {
 
                     <div className="mt-10 flex items-end gap-3">
                         <span className="text-7xl font-bold">{analysis.overall}</span>
-
                         <span className="pb-2 text-xl text-zinc-500">/ 100</span>
                     </div>
 
@@ -70,10 +69,16 @@ export default async function ReportPage({ params }: Props) {
                             {analysis.issues.length > 0 ? (
                                 analysis.issues.map((issue) => (
                                     <div
-                                        key={issue}
-                                        className="rounded-xl border border-red-900/40 bg-black/30 p-4 text-sm text-zinc-300"
+                                        key={issue.title}
+                                        className="rounded-xl border border-red-900/40 bg-black/30 p-4"
                                     >
-                                        ⚠ {issue}
+                                        <p className="text-sm font-semibold text-red-300">
+                                            ⚠ {issue.title}
+                                        </p>
+
+                                        <p className="mt-2 text-sm leading-6 text-zinc-400">
+                                            {issue.description}
+                                        </p>
                                     </div>
                                 ))
                             ) : (
@@ -93,10 +98,16 @@ export default async function ReportPage({ params }: Props) {
                             {analysis.recommendations.length > 0 ? (
                                 analysis.recommendations.map((item) => (
                                     <div
-                                        key={item}
-                                        className="rounded-xl border border-yellow-900/40 bg-black/30 p-4 text-sm text-zinc-300"
+                                        key={item.title}
+                                        className="rounded-xl border border-yellow-900/40 bg-black/30 p-4"
                                     >
-                                        • {item}
+                                        <p className="text-sm font-semibold text-yellow-300">
+                                            • {item.title}
+                                        </p>
+
+                                        <p className="mt-2 text-sm leading-6 text-zinc-400">
+                                            {item.description}
+                                        </p>
                                     </div>
                                 ))
                             ) : (
@@ -116,10 +127,16 @@ export default async function ReportPage({ params }: Props) {
                             {analysis.passed.length > 0 ? (
                                 analysis.passed.map((item) => (
                                     <div
-                                        key={item}
-                                        className="rounded-xl border border-green-900/40 bg-black/30 p-4 text-sm text-zinc-300"
+                                        key={item.title}
+                                        className="rounded-xl border border-green-900/40 bg-black/30 p-4"
                                     >
-                                        ✓ {item}
+                                        <p className="text-sm font-semibold text-green-300">
+                                            ✓ {item.title}
+                                        </p>
+
+                                        <p className="mt-2 text-sm leading-6 text-zinc-400">
+                                            {item.description}
+                                        </p>
                                     </div>
                                 ))
                             ) : (
