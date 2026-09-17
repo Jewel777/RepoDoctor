@@ -50,6 +50,7 @@ export default async function ReportPage({ params }: Props) {
                     ← Back to RepoDoctor
                 </a>
 
+                {/* Main health summary */}
                 <section
                     className={`mt-8 rounded-3xl border ${status.borderClass} ${status.bgClass} p-6 sm:p-8`}
                 >
@@ -120,6 +121,7 @@ export default async function ReportPage({ params }: Props) {
                     </div>
                 </section>
 
+                {/* Repository metadata */}
                 <section className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950 p-6">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div>
@@ -189,6 +191,100 @@ export default async function ReportPage({ params }: Props) {
                     </div>
                 </section>
 
+                {/* README quality */}
+                <section className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950 p-6">
+                    <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <p className="text-sm font-semibold text-white">
+                                README Quality
+                            </p>
+
+                            <p className="mt-1 text-sm text-zinc-500">
+                                Content quality, completeness, and developer usability
+                            </p>
+                        </div>
+
+                        <div className="flex items-end gap-2">
+                            <span
+                                className={`text-4xl font-bold ${getScoreTextClass(
+                                    analysis.readme.qualityScore
+                                )}`}
+                            >
+                                {analysis.readme.qualityScore}
+                            </span>
+
+                            <span className="pb-1 text-sm text-zinc-600">
+                                / 100
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="mt-5 h-2 overflow-hidden rounded-full bg-zinc-900">
+                        <div
+                            className={`h-full rounded-full ${getScoreBarClass(
+                                analysis.readme.qualityScore
+                            )}`}
+                            style={{
+                                width: `${Math.min(
+                                    Math.max(analysis.readme.qualityScore, 0),
+                                    100
+                                )}%`,
+                            }}
+                        />
+                    </div>
+
+                    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <ReadmeCheck
+                            label="README Exists"
+                            passed={analysis.readme.exists}
+                        />
+
+                        <ReadmeCheck
+                            label="Project Description"
+                            passed={analysis.readme.hasDescription}
+                        />
+
+                        <ReadmeCheck
+                            label="Installation"
+                            passed={analysis.readme.hasInstallation}
+                        />
+
+                        <ReadmeCheck
+                            label="Usage"
+                            passed={analysis.readme.hasUsage}
+                        />
+
+                        <ReadmeCheck
+                            label="Contributing"
+                            passed={analysis.readme.hasContributing}
+                        />
+
+                        <ReadmeCheck
+                            label="License Section"
+                            passed={analysis.readme.hasLicense}
+                        />
+
+                        <ReadmeCheck
+                            label="Code Examples"
+                            passed={analysis.readme.hasCodeExamples}
+                        />
+
+                        <ReadmeCheck
+                            label="Badges"
+                            passed={analysis.readme.hasBadges}
+                        />
+                    </div>
+
+                    <div className="mt-5 flex flex-wrap items-center gap-2 text-sm text-zinc-500">
+                        <span>Approximate README length:</span>
+
+                        <span className="font-semibold text-zinc-300">
+                            {analysis.readme.wordCount.toLocaleString()} words
+                        </span>
+                    </div>
+                </section>
+
+                {/* Category scores */}
                 <section className="mt-6">
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {Object.entries(analysis.scores).map(([name, score]) => (
@@ -197,6 +293,7 @@ export default async function ReportPage({ params }: Props) {
                     </div>
                 </section>
 
+                {/* Findings */}
                 <section className="mt-8 grid items-start gap-6 lg:grid-cols-3">
                     <FindingColumn
                         title="Critical Issues"
@@ -301,6 +398,39 @@ function MetadataCard({
     );
 }
 
+function ReadmeCheck({
+    label,
+    passed,
+}: {
+    label: string;
+    passed: boolean;
+}) {
+    return (
+        <div
+            className={`rounded-xl border p-4 ${passed
+                    ? "border-green-900/40 bg-green-950/10"
+                    : "border-zinc-800 bg-black/30"
+                }`}
+        >
+            <div className="flex items-center gap-2">
+                <span
+                    className={`text-sm font-bold ${passed ? "text-green-400" : "text-zinc-600"
+                        }`}
+                >
+                    {passed ? "✓" : "○"}
+                </span>
+
+                <span
+                    className={`text-sm font-medium ${passed ? "text-zinc-200" : "text-zinc-500"
+                        }`}
+                >
+                    {label}
+                </span>
+            </div>
+        </div>
+    );
+}
+
 function ScoreCard({
     name,
     score,
@@ -308,21 +438,23 @@ function ScoreCard({
     name: string;
     score: number;
 }) {
-    const barClass =
-        score >= 80
-            ? "bg-green-400"
-            : score >= 60
-                ? "bg-yellow-400"
-                : "bg-red-400";
+    const barClass = getScoreBarClass(score);
 
     return (
         <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6">
             <div className="flex items-center justify-between gap-4">
-                <p className="text-sm font-medium text-zinc-500">{name}</p>
-                <span className="text-sm text-zinc-600">/ 100</span>
+                <p className="text-sm font-medium text-zinc-500">
+                    {name}
+                </p>
+
+                <span className="text-sm text-zinc-600">
+                    / 100
+                </span>
             </div>
 
-            <p className="mt-2 text-3xl font-bold">{score}</p>
+            <p className="mt-2 text-3xl font-bold">
+                {score}
+            </p>
 
             <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-zinc-900">
                 <div
@@ -371,7 +503,9 @@ function FindingColumn({
                 {count > 0 ? (
                     children
                 ) : (
-                    <p className="text-sm text-zinc-500">{emptyText}</p>
+                    <p className="text-sm text-zinc-500">
+                        {emptyText}
+                    </p>
                 )}
             </div>
         </div>
@@ -436,4 +570,28 @@ function getMaintenanceClass(status: string) {
         default:
             return "text-zinc-200";
     }
+}
+
+function getScoreBarClass(score: number) {
+    if (score >= 80) {
+        return "bg-green-400";
+    }
+
+    if (score >= 60) {
+        return "bg-yellow-400";
+    }
+
+    return "bg-red-400";
+}
+
+function getScoreTextClass(score: number) {
+    if (score >= 80) {
+        return "text-green-400";
+    }
+
+    if (score >= 60) {
+        return "text-yellow-400";
+    }
+
+    return "text-red-400";
 }
