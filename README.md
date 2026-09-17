@@ -6,7 +6,9 @@
 [![GitHub](https://img.shields.io/badge/GitHub-Jewel777%2FRepoDoctor-181717?style=for-the-badge&logo=github)](https://github.com/Jewel777/RepoDoctor)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
-RepoDoctor is an open-source GitHub repository health scanner that analyzes public repositories and generates a clear health score across documentation, security, testing, community readiness, maintenance, and automation.
+**RepoDoctor helps developers instantly evaluate the health of any public GitHub repository.**
+
+It analyzes documentation, security, testing, community readiness, maintenance, and automation — then turns those signals into a clear repository health score with actionable improvement opportunities.
 
 ## 🖥️ Preview
 
