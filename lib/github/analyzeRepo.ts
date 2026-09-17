@@ -82,6 +82,34 @@ export async function analyzeRepo(owner: string, repo: string) {
     ]);
 
     // ------------------------------------------------------------
+    // Repository activity
+    // ------------------------------------------------------------
+
+    const daysSinceLastPush = getDaysSince(repoData.pushed_at);
+
+    const maintenanceStatus =
+        repoData.archived
+            ? "Archived"
+            : daysSinceLastPush <= 30
+                ? "Active"
+                : daysSinceLastPush <= 90
+                    ? "Needs Attention"
+                    : daysSinceLastPush <= 180
+                        ? "Stale"
+                        : "Inactive";
+
+    const activityScore =
+        repoData.archived
+            ? 0
+            : daysSinceLastPush <= 30
+                ? 20
+                : daysSinceLastPush <= 90
+                    ? 15
+                    : daysSinceLastPush <= 180
+                        ? 10
+                        : 0;
+
+    // ------------------------------------------------------------
     // Scoring
     // ------------------------------------------------------------
 
@@ -112,10 +140,11 @@ export async function analyzeRepo(owner: string, repo: string) {
         (dependabot ? 25 : 0);
 
     const maintenance =
-        40 +
-        (gitignore ? 20 : 0) +
+        30 +
+        (gitignore ? 15 : 0) +
         (workflows ? 20 : 0) +
-        (dependabot ? 20 : 0);
+        (dependabot ? 15 : 0) +
+        activityScore;
 
     const overall = Math.round(
         documentation * 0.2 +
@@ -288,11 +317,35 @@ export async function analyzeRepo(owner: string, repo: string) {
         });
     }
 
+    // ------------------------------------------------------------
+    // Maintenance findings
+    // ------------------------------------------------------------
+
     if (repoData.archived) {
         issues.push({
             title: "Repository is archived",
             description:
-                "This repository is archived and is no longer accepting active development changes.",
+                "This repository has been archived on GitHub and is no longer considered actively maintained.",
+        });
+    } else if (daysSinceLastPush > 180) {
+        recommendations.push({
+            title: "Repository appears inactive",
+            description: `The repository has not received a code push for ${daysSinceLastPush} days. Consider updating the project or clearly documenting its maintenance status.`,
+        });
+    } else if (daysSinceLastPush > 90) {
+        recommendations.push({
+            title: "Repository activity is stale",
+            description: `The last code push was ${daysSinceLastPush} days ago. Consider reviewing outstanding maintenance work and dependencies.`,
+        });
+    } else if (daysSinceLastPush > 30) {
+        recommendations.push({
+            title: "Repository may need maintenance attention",
+            description: `The last code push was ${daysSinceLastPush} days ago. The repository is still reasonably active but may benefit from a maintenance review.`,
+        });
+    } else {
+        passed.push({
+            title: "Repository activity is healthy",
+            description: `The repository received a code push within the last ${daysSinceLastPush} day${daysSinceLastPush === 1 ? "" : "s"}.`,
         });
     }
 
@@ -325,10 +378,28 @@ export async function analyzeRepo(owner: string, repo: string) {
             createdAt: repoData.created_at,
             updatedAt: repoData.updated_at,
             pushedAt: repoData.pushed_at,
+
+            daysSinceLastPush,
+            maintenanceStatus,
         },
 
         issues,
         recommendations,
         passed,
     };
+}
+
+function getDaysSince(value: string) {
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return 9999;
+    }
+
+    const difference = Date.now() - date.getTime();
+
+    return Math.max(
+        0,
+        Math.floor(difference / (1000 * 60 * 60 * 24))
+    );
 }

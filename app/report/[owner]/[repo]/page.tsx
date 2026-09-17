@@ -38,7 +38,6 @@ export default async function ReportPage({ params }: Props) {
                     bgClass: "bg-red-950/10",
                 };
 
-    const lastPush = formatDate(analysis.repository.pushedAt);
     const createdAt = formatDate(analysis.repository.createdAt);
 
     return (
@@ -51,7 +50,6 @@ export default async function ReportPage({ params }: Props) {
                     ← Back to RepoDoctor
                 </a>
 
-                {/* Main report card */}
                 <section
                     className={`mt-8 rounded-3xl border ${status.borderClass} ${status.bgClass} p-6 sm:p-8`}
                 >
@@ -122,7 +120,6 @@ export default async function ReportPage({ params }: Props) {
                     </div>
                 </section>
 
-                {/* Repository metadata */}
                 <section className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950 p-6">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div>
@@ -131,7 +128,7 @@ export default async function ReportPage({ params }: Props) {
                             </p>
 
                             <p className="mt-1 text-sm text-zinc-500">
-                                Live metadata from GitHub
+                                Live metadata and maintenance intelligence from GitHub
                             </p>
                         </div>
 
@@ -173,7 +170,8 @@ export default async function ReportPage({ params }: Props) {
 
                         <MetadataCard
                             label="Last Push"
-                            value={lastPush}
+                            value={`${analysis.repository.daysSinceLastPush} day${analysis.repository.daysSinceLastPush === 1 ? "" : "s"
+                                } ago`}
                         />
 
                         <MetadataCard
@@ -182,13 +180,15 @@ export default async function ReportPage({ params }: Props) {
                         />
 
                         <MetadataCard
-                            label="Status"
-                            value={analysis.repository.archived ? "Archived" : "Active"}
+                            label="Maintenance"
+                            value={analysis.repository.maintenanceStatus}
+                            valueClass={getMaintenanceClass(
+                                analysis.repository.maintenanceStatus
+                            )}
                         />
                     </div>
                 </section>
 
-                {/* Category scores */}
                 <section className="mt-6">
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {Object.entries(analysis.scores).map(([name, score]) => (
@@ -197,7 +197,6 @@ export default async function ReportPage({ params }: Props) {
                     </div>
                 </section>
 
-                {/* Findings */}
                 <section className="mt-8 grid items-start gap-6 lg:grid-cols-3">
                     <FindingColumn
                         title="Critical Issues"
@@ -283,9 +282,11 @@ function SummaryStat({
 function MetadataCard({
     label,
     value,
+    valueClass = "text-zinc-200",
 }: {
     label: string;
     value: string;
+    valueClass?: string;
 }) {
     return (
         <div className="rounded-xl border border-zinc-800 bg-black/30 p-4">
@@ -293,7 +294,7 @@ function MetadataCard({
                 {label}
             </p>
 
-            <p className="mt-2 break-words text-sm font-semibold text-zinc-200">
+            <p className={`mt-2 break-words text-sm font-semibold ${valueClass}`}>
                 {value}
             </p>
         </div>
@@ -318,7 +319,6 @@ function ScoreCard({
         <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6">
             <div className="flex items-center justify-between gap-4">
                 <p className="text-sm font-medium text-zinc-500">{name}</p>
-
                 <span className="text-sm text-zinc-600">/ 100</span>
             </div>
 
@@ -416,4 +416,24 @@ function formatDate(value: string) {
         month: "short",
         day: "numeric",
     }).format(date);
+}
+
+function getMaintenanceClass(status: string) {
+    switch (status) {
+        case "Active":
+            return "text-green-400";
+
+        case "Needs Attention":
+            return "text-yellow-400";
+
+        case "Stale":
+            return "text-orange-400";
+
+        case "Inactive":
+        case "Archived":
+            return "text-red-400";
+
+        default:
+            return "text-zinc-200";
+    }
 }
