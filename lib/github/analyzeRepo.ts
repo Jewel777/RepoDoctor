@@ -1,3 +1,8 @@
+type HealthItem = {
+    title: string;
+    description: string;
+};
+
 export async function analyzeRepo(owner: string, repo: string) {
     const base = `https://api.github.com/repos/${owner}/${repo}`;
 
@@ -38,6 +43,10 @@ export async function analyzeRepo(owner: string, repo: string) {
         exists(".gitignore"),
     ]);
 
+    // ------------------------------------------------------------
+    // Scoring
+    // ------------------------------------------------------------
+
     const documentation =
         (readme ? 50 : 0) +
         (license ? 15 : 0) +
@@ -46,25 +55,29 @@ export async function analyzeRepo(owner: string, repo: string) {
         (gitignore ? 10 : 0);
 
     const securityScore =
-        (security ? 60 : 0) +
-        (dependabot ? 40 : 0);
+        40 +
+        (security ? 35 : 0) +
+        (dependabot ? 25 : 0);
 
-    const testingScore = tests ? 100 : 30;
+    const testingScore = tests ? 100 : 40;
 
     const community =
-        (contributing ? 30 : 0) +
-        (codeOfConduct ? 25 : 0) +
-        (issueTemplates ? 20 : 0) +
-        (pullRequestTemplate ? 25 : 0);
+        30 +
+        (contributing ? 20 : 0) +
+        (codeOfConduct ? 15 : 0) +
+        (issueTemplates ? 15 : 0) +
+        (pullRequestTemplate ? 20 : 0);
 
     const automationScore =
-        (workflows ? 70 : 0) +
-        (dependabot ? 30 : 0);
+        30 +
+        (workflows ? 45 : 0) +
+        (dependabot ? 25 : 0);
 
     const maintenance =
-        (gitignore ? 30 : 0) +
-        (workflows ? 35 : 0) +
-        (dependabot ? 35 : 0);
+        40 +
+        (gitignore ? 20 : 0) +
+        (workflows ? 20 : 0) +
+        (dependabot ? 20 : 0);
 
     const overall = Math.round(
         documentation * 0.2 +
@@ -75,32 +88,25 @@ export async function analyzeRepo(owner: string, repo: string) {
         automationScore * 0.1
     );
 
-    const issues: {
-        title: string;
-        description: string;
-    }[] = [];
+    // ------------------------------------------------------------
+    // Findings
+    // ------------------------------------------------------------
 
-    const recommendations: {
-        title: string;
-        description: string;
-    }[] = [];
-
-    const passed: {
-        title: string;
-        description: string;
-    }[] = [];
+    const issues: HealthItem[] = [];
+    const recommendations: HealthItem[] = [];
+    const passed: HealthItem[] = [];
 
     if (!readme) {
         issues.push({
             title: "README.md is missing",
             description:
-                "Add a README that explains what the project does, how to install it, how to use it, and how others can contribute.",
+                "Add a README that clearly explains what the project does, how to install it, how to use it, and how others can contribute.",
         });
     } else {
         passed.push({
             title: "README.md found",
             description:
-                "The repository includes a README file that helps users understand the project.",
+                "The repository includes a README that helps users understand the project.",
         });
     }
 
@@ -108,7 +114,7 @@ export async function analyzeRepo(owner: string, repo: string) {
         issues.push({
             title: "LICENSE file is missing",
             description:
-                "Add an open-source license so users clearly understand how they are allowed to use, modify, and distribute the project.",
+                "Add an open-source license so users clearly understand how they may use, modify, and distribute the project.",
         });
     } else {
         passed.push({
@@ -142,7 +148,7 @@ export async function analyzeRepo(owner: string, repo: string) {
         passed.push({
             title: "Tests directory found",
             description:
-                "The repository contains a tests directory, providing a foundation for automated quality checks.",
+                "The repository contains a tests directory that provides a foundation for automated quality checks.",
         });
     }
 
@@ -234,7 +240,7 @@ export async function analyzeRepo(owner: string, repo: string) {
         recommendations.push({
             title: "Add .gitignore",
             description:
-                "Exclude generated files, dependencies, local configuration, and sensitive development artifacts from version control.",
+                "Exclude generated files, dependencies, local configuration, and development artifacts from version control.",
         });
     } else {
         passed.push({
