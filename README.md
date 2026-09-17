@@ -2,40 +2,25 @@
 
 > Diagnose your repository before your users do.
 
-RepoDoctor is an open-source GitHub repository health scanner that analyzes public repositories and generates a clear health score across documentation, security, testing, community standards, maintenance, and automation.
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Open%20RepoDoctor-000000?style=for-the-badge&logo=vercel)](https://repo-doctor-hazel.vercel.app)
+[![GitHub](https://img.shields.io/badge/GitHub-Jewel777%2FRepoDoctor-181717?style=for-the-badge&logo=github)](https://github.com/Jewel777/RepoDoctor)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+
+RepoDoctor is an open-source GitHub repository health scanner that analyzes public repositories and generates a clear health score across documentation, security, testing, community readiness, maintenance, and automation.
 
 ## 🖥️ Preview
 
-![RepoDoctor Preview]("![RepoDoctor Preview](./public/repodoctor-preview.png)")
+![RepoDoctor Preview](./repodoctor-preview.png)
 
-## ✨ What RepoDoctor Checks
+## 🌐 Live Demo
 
-RepoDoctor currently analyzes:
+Try RepoDoctor here:
 
-- README presence
-- License presence
-- Contributing guide
-- Security policy
-- Test directory
-- GitHub Actions workflows
-- Community readiness
-- Maintenance health
+**https://repo-doctor-hazel.vercel.app**
 
-## 📊 Health Categories
+Paste any public GitHub repository URL and receive an instant repository health report.
 
-| Category | Description |
-|---|---|
-| Documentation | README, license, and contribution documentation |
-| Security | Security policy and repository safety signals |
-| Testing | Presence of automated tests |
-| Community | Contribution and open-source readiness |
-| Maintenance | General repository maintainability |
-| Automation | CI/CD and GitHub Actions workflows |
+Example:
 
-## 🚀 Getting Started
-
-Clone the repository:
-
-```bash
-git clone https://github.com/Jewel777/RepoDoctor.git
-cd RepoDoctor
+```text
+https://github.com/Jewel777/RepoDoctor
