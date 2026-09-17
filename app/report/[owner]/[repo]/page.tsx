@@ -20,22 +20,16 @@ export default async function ReportPage({ params }: Props) {
                 </a>
 
                 <div className="mt-10 rounded-2xl border border-zinc-800 bg-zinc-950 p-8">
-                    <p className="text-sm text-zinc-500">
-                        Repository Health Report
-                    </p>
+                    <p className="text-sm text-zinc-500">Repository Health Report</p>
 
                     <h1 className="mt-2 text-4xl font-bold">
                         {owner}/{repo}
                     </h1>
 
                     <div className="mt-10 flex items-end gap-3">
-                        <span className="text-7xl font-bold">
-                            {analysis.overall}
-                        </span>
+                        <span className="text-7xl font-bold">{analysis.overall}</span>
 
-                        <span className="pb-2 text-xl text-zinc-500">
-                            / 100
-                        </span>
+                        <span className="pb-2 text-xl text-zinc-500">/ 100</span>
                     </div>
 
                     <p
@@ -61,12 +55,80 @@ export default async function ReportPage({ params }: Props) {
                             className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6"
                         >
                             <p className="text-sm text-zinc-500">{name}</p>
-
-                            <p className="mt-2 text-3xl font-bold">
-                                {score}
-                            </p>
+                            <p className="mt-2 text-3xl font-bold">{score}</p>
                         </div>
                     ))}
+                </div>
+
+                <div className="mt-8 grid gap-6 lg:grid-cols-3">
+                    <div className="rounded-2xl border border-red-900/50 bg-red-950/20 p-6">
+                        <h2 className="text-lg font-semibold text-red-400">
+                            Critical Issues
+                        </h2>
+
+                        <div className="mt-4 space-y-3">
+                            {analysis.issues.length > 0 ? (
+                                analysis.issues.map((issue) => (
+                                    <div
+                                        key={issue}
+                                        className="rounded-xl border border-red-900/40 bg-black/30 p-4 text-sm text-zinc-300"
+                                    >
+                                        ⚠ {issue}
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-sm text-zinc-500">
+                                    No critical issues detected.
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-yellow-900/50 bg-yellow-950/20 p-6">
+                        <h2 className="text-lg font-semibold text-yellow-400">
+                            Recommendations
+                        </h2>
+
+                        <div className="mt-4 space-y-3">
+                            {analysis.recommendations.length > 0 ? (
+                                analysis.recommendations.map((item) => (
+                                    <div
+                                        key={item}
+                                        className="rounded-xl border border-yellow-900/40 bg-black/30 p-4 text-sm text-zinc-300"
+                                    >
+                                        • {item}
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-sm text-zinc-500">
+                                    No recommendations right now.
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-green-900/50 bg-green-950/20 p-6">
+                        <h2 className="text-lg font-semibold text-green-400">
+                            Passed Checks
+                        </h2>
+
+                        <div className="mt-4 space-y-3">
+                            {analysis.passed.length > 0 ? (
+                                analysis.passed.map((item) => (
+                                    <div
+                                        key={item}
+                                        className="rounded-xl border border-green-900/40 bg-black/30 p-4 text-sm text-zinc-300"
+                                    >
+                                        ✓ {item}
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-sm text-zinc-500">
+                                    No checks passed yet.
+                                </p>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>

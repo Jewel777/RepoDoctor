@@ -34,9 +34,7 @@ export async function analyzeRepo(owner: string, repo: string) {
         (contributing ? 20 : 0);
 
     const securityScore = security ? 100 : 40;
-
     const testingScore = tests ? 100 : 30;
-
     const automationScore = workflows ? 100 : 30;
 
     const community =
@@ -54,6 +52,46 @@ export async function analyzeRepo(owner: string, repo: string) {
         automationScore * 0.1
     );
 
+    const issues: string[] = [];
+    const recommendations: string[] = [];
+    const passed: string[] = [];
+
+    if (!readme) {
+        issues.push("README.md is missing");
+    } else {
+        passed.push("README.md found");
+    }
+
+    if (!license) {
+        issues.push("LICENSE file is missing");
+    } else {
+        passed.push("LICENSE found");
+    }
+
+    if (!security) {
+        issues.push("SECURITY.md is missing");
+    } else {
+        passed.push("SECURITY.md found");
+    }
+
+    if (!tests) {
+        issues.push("No tests directory detected");
+    } else {
+        passed.push("Tests directory found");
+    }
+
+    if (!contributing) {
+        recommendations.push("Add CONTRIBUTING.md");
+    } else {
+        passed.push("CONTRIBUTING.md found");
+    }
+
+    if (!workflows) {
+        recommendations.push("Add a GitHub Actions workflow");
+    } else {
+        passed.push("GitHub Actions workflow detected");
+    }
+
     return {
         overall,
         scores: {
@@ -64,5 +102,8 @@ export async function analyzeRepo(owner: string, repo: string) {
             Maintenance: maintenance,
             Automation: automationScore,
         },
+        issues,
+        recommendations,
+        passed,
     };
 }
