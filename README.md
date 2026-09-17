@@ -4,6 +4,10 @@
 
 RepoDoctor is an open-source GitHub repository health scanner that analyzes public repositories and generates a clear health score across documentation, security, testing, community standards, maintenance, and automation.
 
+## 🖥️ Preview
+
+![RepoDoctor Preview](./public/repodoctor-preview.png)
+
 ## ✨ What RepoDoctor Checks
 
 RepoDoctor currently analyzes:
