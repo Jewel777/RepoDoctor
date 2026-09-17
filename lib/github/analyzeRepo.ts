@@ -3,8 +3,46 @@ type HealthItem = {
     description: string;
 };
 
+type GitHubRepository = {
+    name: string;
+    full_name: string;
+    description: string | null;
+    stargazers_count: number;
+    forks_count: number;
+    open_issues_count: number;
+    default_branch: string;
+    language: string | null;
+    archived: boolean;
+    created_at: string;
+    updated_at: string;
+    pushed_at: string;
+};
+
 export async function analyzeRepo(owner: string, repo: string) {
     const base = `https://api.github.com/repos/${owner}/${repo}`;
+
+    // ------------------------------------------------------------
+    // Repository metadata
+    // ------------------------------------------------------------
+
+    const repoResponse = await fetch(base, {
+        headers: {
+            Accept: "application/vnd.github+json",
+        },
+        next: { revalidate: 300 },
+    });
+
+    if (!repoResponse.ok) {
+        throw new Error(
+            "Repository not found or the GitHub API request could not be completed."
+        );
+    }
+
+    const repoData = (await repoResponse.json()) as GitHubRepository;
+
+    // ------------------------------------------------------------
+    // Repository file checks
+    // ------------------------------------------------------------
 
     async function exists(path: string) {
         const res = await fetch(`${base}/contents/${path}`, {
@@ -250,8 +288,21 @@ export async function analyzeRepo(owner: string, repo: string) {
         });
     }
 
+    if (repoData.archived) {
+        issues.push({
+            title: "Repository is archived",
+            description:
+                "This repository is archived and is no longer accepting active development changes.",
+        });
+    }
+
+    // ------------------------------------------------------------
+    // Result
+    // ------------------------------------------------------------
+
     return {
         overall,
+
         scores: {
             Documentation: documentation,
             Security: securityScore,
@@ -260,6 +311,22 @@ export async function analyzeRepo(owner: string, repo: string) {
             Maintenance: maintenance,
             Automation: automationScore,
         },
+
+        repository: {
+            name: repoData.name,
+            fullName: repoData.full_name,
+            description: repoData.description,
+            stars: repoData.stargazers_count,
+            forks: repoData.forks_count,
+            openIssues: repoData.open_issues_count,
+            defaultBranch: repoData.default_branch,
+            language: repoData.language,
+            archived: repoData.archived,
+            createdAt: repoData.created_at,
+            updatedAt: repoData.updated_at,
+            pushedAt: repoData.pushed_at,
+        },
+
         issues,
         recommendations,
         passed,

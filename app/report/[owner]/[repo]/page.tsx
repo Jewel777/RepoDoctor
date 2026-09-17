@@ -38,6 +38,9 @@ export default async function ReportPage({ params }: Props) {
                     bgClass: "bg-red-950/10",
                 };
 
+    const lastPush = formatDate(analysis.repository.pushedAt);
+    const createdAt = formatDate(analysis.repository.createdAt);
+
     return (
         <main className="min-h-screen bg-black px-5 py-8 text-white sm:px-6 sm:py-10">
             <div className="mx-auto max-w-6xl">
@@ -59,8 +62,14 @@ export default async function ReportPage({ params }: Props) {
                             </p>
 
                             <h1 className="mt-2 break-words text-3xl font-bold tracking-tight sm:text-4xl">
-                                {owner}/{repo}
+                                {analysis.repository.fullName}
                             </h1>
+
+                            {analysis.repository.description && (
+                                <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400 sm:text-base">
+                                    {analysis.repository.description}
+                                </p>
+                            )}
 
                             <div className="mt-8 flex items-end gap-3">
                                 <span className="text-6xl font-bold tracking-tight sm:text-7xl">
@@ -72,9 +81,17 @@ export default async function ReportPage({ params }: Props) {
                                 </span>
                             </div>
 
-                            <p className={`mt-2 text-lg font-semibold ${status.textClass}`}>
-                                {status.label}
-                            </p>
+                            <div className="mt-2 flex flex-wrap items-center gap-3">
+                                <p className={`text-lg font-semibold ${status.textClass}`}>
+                                    {status.label}
+                                </p>
+
+                                {analysis.repository.archived && (
+                                    <span className="rounded-full border border-red-900/60 bg-red-950/30 px-3 py-1 text-xs font-medium text-red-300">
+                                        Archived
+                                    </span>
+                                )}
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
@@ -105,6 +122,72 @@ export default async function ReportPage({ params }: Props) {
                     </div>
                 </section>
 
+                {/* Repository metadata */}
+                <section className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950 p-6">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p className="text-sm font-semibold text-white">
+                                Repository Overview
+                            </p>
+
+                            <p className="mt-1 text-sm text-zinc-500">
+                                Live metadata from GitHub
+                            </p>
+                        </div>
+
+                        <a
+                            href={`https://github.com/${analysis.repository.fullName}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-medium text-zinc-400 transition hover:text-white"
+                        >
+                            Open on GitHub ↗
+                        </a>
+                    </div>
+
+                    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <MetadataCard
+                            label="Stars"
+                            value={`★ ${analysis.repository.stars.toLocaleString()}`}
+                        />
+
+                        <MetadataCard
+                            label="Forks"
+                            value={`⑂ ${analysis.repository.forks.toLocaleString()}`}
+                        />
+
+                        <MetadataCard
+                            label="Open Issues"
+                            value={analysis.repository.openIssues.toLocaleString()}
+                        />
+
+                        <MetadataCard
+                            label="Language"
+                            value={analysis.repository.language ?? "Not detected"}
+                        />
+
+                        <MetadataCard
+                            label="Default Branch"
+                            value={analysis.repository.defaultBranch}
+                        />
+
+                        <MetadataCard
+                            label="Last Push"
+                            value={lastPush}
+                        />
+
+                        <MetadataCard
+                            label="Created"
+                            value={createdAt}
+                        />
+
+                        <MetadataCard
+                            label="Status"
+                            value={analysis.repository.archived ? "Archived" : "Active"}
+                        />
+                    </div>
+                </section>
+
                 {/* Category scores */}
                 <section className="mt-6">
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -118,6 +201,7 @@ export default async function ReportPage({ params }: Props) {
                 <section className="mt-8 grid items-start gap-6 lg:grid-cols-3">
                     <FindingColumn
                         title="Critical Issues"
+                        count={analysis.issues.length}
                         titleClass="text-red-400"
                         borderClass="border-red-900/50"
                         backgroundClass="bg-red-950/20"
@@ -136,6 +220,7 @@ export default async function ReportPage({ params }: Props) {
 
                     <FindingColumn
                         title="Recommendations"
+                        count={analysis.recommendations.length}
                         titleClass="text-yellow-400"
                         borderClass="border-yellow-900/50"
                         backgroundClass="bg-yellow-950/20"
@@ -154,6 +239,7 @@ export default async function ReportPage({ params }: Props) {
 
                     <FindingColumn
                         title="Passed Checks"
+                        count={analysis.passed.length}
                         titleClass="text-green-400"
                         borderClass="border-green-900/50"
                         backgroundClass="bg-green-950/20"
@@ -194,6 +280,26 @@ function SummaryStat({
     );
 }
 
+function MetadataCard({
+    label,
+    value,
+}: {
+    label: string;
+    value: string;
+}) {
+    return (
+        <div className="rounded-xl border border-zinc-800 bg-black/30 p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-zinc-600">
+                {label}
+            </p>
+
+            <p className="mt-2 break-words text-sm font-semibold text-zinc-200">
+                {value}
+            </p>
+        </div>
+    );
+}
+
 function ScoreCard({
     name,
     score,
@@ -221,7 +327,9 @@ function ScoreCard({
             <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-zinc-900">
                 <div
                     className={`h-full rounded-full ${barClass}`}
-                    style={{ width: `${Math.min(Math.max(score, 0), 100)}%` }}
+                    style={{
+                        width: `${Math.min(Math.max(score, 0), 100)}%`,
+                    }}
                 />
             </div>
         </div>
@@ -230,6 +338,7 @@ function ScoreCard({
 
 function FindingColumn({
     title,
+    count,
     titleClass,
     borderClass,
     backgroundClass,
@@ -237,32 +346,29 @@ function FindingColumn({
     children,
 }: {
     title: string;
+    count: number;
     titleClass: string;
     borderClass: string;
     backgroundClass: string;
     emptyText: string;
     children: React.ReactNode;
 }) {
-    const childCount = Array.isArray(children)
-        ? children.length
-        : children
-            ? 1
-            : 0;
-
     return (
         <div
             className={`rounded-2xl border p-6 ${borderClass} ${backgroundClass}`}
         >
             <div className="flex items-center justify-between gap-3">
-                <h2 className={`text-lg font-semibold ${titleClass}`}>{title}</h2>
+                <h2 className={`text-lg font-semibold ${titleClass}`}>
+                    {title}
+                </h2>
 
                 <span className="rounded-full border border-zinc-800 bg-black/30 px-2.5 py-1 text-xs text-zinc-500">
-                    {childCount}
+                    {count}
                 </span>
             </div>
 
             <div className="mt-4 space-y-3">
-                {childCount > 0 ? (
+                {count > 0 ? (
                     children
                 ) : (
                     <p className="text-sm text-zinc-500">{emptyText}</p>
@@ -296,4 +402,18 @@ function FindingCard({
             </p>
         </div>
     );
+}
+
+function formatDate(value: string) {
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return "Unknown";
+    }
+
+    return new Intl.DateTimeFormat("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+    }).format(date);
 }
