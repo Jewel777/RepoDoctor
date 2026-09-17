@@ -1,0 +1,33 @@
+name: Feature request
+description: Suggest a new repository-health check or product improvement.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or opportunity
+      description: What repository-health problem should RepoDoctor solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the feature or analysis you would like to see.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scoring
+    attributes:
+      label: Scoring considerations
+      description: If this affects scoring, explain when a repository should pass, fail, or receive a recommendation.
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples
+      description: Add public repositories or tools that demonstrate the idea, if applicable.

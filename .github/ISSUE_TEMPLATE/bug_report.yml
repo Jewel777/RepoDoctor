@@ -1,0 +1,39 @@
+name: Bug report
+description: Report incorrect analysis, scoring, or application behavior.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping improve RepoDoctor.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Problem
+      description: What happened?
+      placeholder: Describe the unexpected behavior.
+    validations:
+      required: true
+
+  - type: input
+    id: repository
+    attributes:
+      label: Repository URL
+      description: If the problem involves a scan, provide the public GitHub repository URL.
+      placeholder: https://github.com/owner/repository
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect RepoDoctor to report?
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Additional details
+      description: Include browser details, screenshots, console output, or reproduction steps when useful.

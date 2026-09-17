@@ -1,4 +1,5 @@
-﻿import { analyzeRepo } from "@/lib/github/analyzeRepo";
+import Link from "next/link";
+import { analyzeRepo } from "@/lib/github/analyzeRepo";
 
 type Props = {
     params: Promise<{
@@ -48,12 +49,12 @@ export default async function ReportPage({ params }: Props) {
     return (
         <main className="min-h-screen bg-black px-5 py-8 text-white sm:px-6 sm:py-10">
             <div className="mx-auto max-w-7xl">
-                <a
-                    href="/"
-                    className="inline-flex items-center text-sm text-zinc-400 transition hover:text-white"
-                >
-                    ← Back to RepoDoctor
-                </a>
+          <Link
+            href="/"
+            className="inline-flex items-center text-sm text-zinc-400 transition hover:text-white"
+          >
+            ← Back to RepoDoctor
+          </Link>
 
                 {/* Main health summary */}
                 <section
