@@ -1075,28 +1075,31 @@ function analyzeReadme(
     const hasDescription =
         Boolean(repositoryDescription?.trim()) || containsMeaningfulIntro(content);
 
-    const hasInstallation = hasHeading(content, [
-        "installation",
-        "install",
-        "setup",
-        "getting started",
-        "quick start",
-        "quickstart",
-    ]);
+  const hasInstallation = hasHeading(content, [
+    "installation",
+    "install",
+    "setup",
+    "development setup",
+    "getting started",
+    "quick start",
+    "quickstart",
+  ]);
 
-    const hasUsage = hasHeading(content, [
-        "usage",
-        "how to use",
-        "examples",
-        "example",
-        "demo",
-    ]);
+  const hasUsage = hasHeading(content, [
+    "usage",
+    "how to use",
+    "examples",
+    "example",
+    "demo",
+    "live demo",
+  ]);;
 
-    const hasContributing = hasHeading(content, [
-        "contributing",
-        "contribution",
-        "contributors",
-    ]);
+  const hasContributing = hasHeading(content, [
+    "contributing",
+    "contribution",
+    "contributors",
+    "development",
+  ]);
 
     const hasLicense = hasHeading(content, ["license", "licensing"]);
     const hasCodeExamples = /```[\s\S]*?```/m.test(content);
@@ -1135,26 +1138,34 @@ function analyzeReadme(
 }
 
 function hasHeading(content: string, names: string[]) {
-    const headings = content
-        .split("\n")
-        .map((line) => line.trim())
-        .filter((line) => /^#{1,6}\s+/.test(line))
-        .map((line) =>
-            line
-                .replace(/^#{1,6}\s+/, "")
-                .replace(/[^\w\s-]/g, "")
-                .trim()
-                .toLowerCase()
-        );
+  const normalize = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/&/g, " and ")
+      .replace(/[^\p{L}\p{N}\s-]/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim();
 
-    return names.some((name) =>
-        headings.some(
-            (heading) =>
-                heading === name ||
-                heading.startsWith(`${name} `) ||
-                heading.includes(name)
-        )
+  const headings = content
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => /^#{1,6}\s+/.test(line))
+    .map((line) =>
+      normalize(
+        line.replace(/^#{1,6}\s+/, "")
+      )
     );
+
+  return names.some((name) => {
+    const normalizedName = normalize(name);
+
+    return headings.some(
+      (heading) =>
+        heading === normalizedName ||
+        heading.startsWith(`${normalizedName} `) ||
+        heading.includes(normalizedName)
+    );
+  });
 }
 
 function containsMeaningfulIntro(content: string) {
