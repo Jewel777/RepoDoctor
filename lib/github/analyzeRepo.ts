@@ -57,7 +57,53 @@ export async function analyzeRepo(owner: string, repo: string) {
     });
 
     return response.ok;
-  }
+    }
+
+
+    async function hasAnyTestFiles() {
+        const commonPaths = [
+            "tests",
+            "test",
+            "__tests__",
+            "src/__tests__",
+            "app/__tests__",
+        ];
+
+        const results = await Promise.all(
+            commonPaths.map((path) => exists(path))
+        );
+
+        if (results.some(Boolean)) {
+            return true;
+        }
+
+        const response = await fetch(
+            `${base}/git/trees/${repoData.default_branch}?recursive=1`,
+            {
+                headers: {
+                    Accept: "application/vnd.github+json",
+                },
+                next: { revalidate: 300 },
+            }
+        );
+
+        if (!response.ok) {
+            return false;
+        }
+
+        const data = await response.json();
+
+        return (
+            data.tree?.some(
+                (item: { path?: string; type?: string }) =>
+                    item.type === "blob" &&
+                    item.path &&
+                    /\.(test|spec)\.(js|jsx|ts|tsx|mjs|cjs)$/i.test(item.path)
+            ) ?? false
+        );
+    }
+
+
 
   async function getReadme(): Promise<string | null> {
     const response = await fetch(`${base}/readme`, {
@@ -92,7 +138,7 @@ export async function analyzeRepo(owner: string, repo: string) {
     exists("SECURITY.md"),
     exists("CONTRIBUTING.md"),
     exists(".github/workflows"),
-    exists("tests"),
+      hasAnyTestFiles(),
     exists("CODE_OF_CONDUCT.md"),
     exists(".github/PULL_REQUEST_TEMPLATE.md"),
     exists(".github/ISSUE_TEMPLATE"),
