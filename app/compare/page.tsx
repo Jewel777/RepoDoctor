@@ -46,13 +46,22 @@ export default function ComparePage() {
 
   return (
     <main className="min-h-screen bg-black px-6 py-12 text-white">
-      <div className="mx-auto max-w-4xl">
-        <Link
-          href="/"
-          className="text-sm text-zinc-400 transition hover:text-white"
-        >
-          ← Back to RepoDoctor
-        </Link>
+      <div className="mx-auto max-w-5xl">
+        <div className="flex items-center justify-between">
+          <Link
+            href="/"
+            className="text-sm text-zinc-400 transition hover:text-white"
+          >
+            ← Back to RepoDoctor
+          </Link>
+
+          <Link
+            href="/report/Jewel777/RepoDoctor"
+            className="text-sm text-zinc-400 transition hover:text-white"
+          >
+            Analyze a repository →
+          </Link>
+        </div>
 
         <div className="mt-12">
           <p className="text-sm uppercase tracking-[0.2em] text-zinc-500">
@@ -64,14 +73,44 @@ export default function ComparePage() {
           </h1>
 
           <p className="mt-4 max-w-2xl text-zinc-400">
-            Compare repository health, documentation, security, testing,
-            maintenance, automation, community, and code quality side by side.
+            Compare GitHub repositories side by side across documentation,
+            security, testing, maintenance, automation, community, and code
+            quality.
           </p>
+        </div>
+
+        <div className="mt-10 grid gap-6 md:grid-cols-3">
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
+            <p className="text-xs uppercase tracking-[0.15em] text-zinc-500">
+              Health
+            </p>
+            <p className="mt-2 text-sm text-zinc-300">
+              Compare overall repository health scores.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
+            <p className="text-xs uppercase tracking-[0.15em] text-zinc-500">
+              Engineering
+            </p>
+            <p className="mt-2 text-sm text-zinc-300">
+              Compare testing, CI/CD, automation, and code quality.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
+            <p className="text-xs uppercase tracking-[0.15em] text-zinc-500">
+              Project Health
+            </p>
+            <p className="mt-2 text-sm text-zinc-300">
+              Compare documentation, security, community, and maintenance.
+            </p>
+          </div>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="mt-10 rounded-2xl border border-zinc-800 bg-zinc-950 p-6"
+          className="mt-8 rounded-2xl border border-zinc-800 bg-zinc-950 p-6 sm:p-8"
         >
           <div className="grid gap-6 md:grid-cols-2">
             <div>
@@ -87,8 +126,12 @@ export default function ComparePage() {
                 value={repoA}
                 onChange={(event) => setRepoA(event.target.value)}
                 placeholder="react/react"
-                className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-zinc-600"
+                className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-white outline-none transition placeholder:text-zinc-600 focus:border-zinc-600"
               />
+
+              <p className="mt-2 text-xs text-zinc-600">
+                Example: react/react
+              </p>
             </div>
 
             <div>
@@ -104,12 +147,20 @@ export default function ComparePage() {
                 value={repoB}
                 onChange={(event) => setRepoB(event.target.value)}
                 placeholder="vercel/next.js"
-                className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-zinc-600"
+                className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-white outline-none transition placeholder:text-zinc-600 focus:border-zinc-600"
               />
+
+              <p className="mt-2 text-xs text-zinc-600">
+                Example: vercel/next.js
+              </p>
             </div>
           </div>
 
-          {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
+          {error && (
+            <div className="mt-5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3">
+              <p className="text-sm text-red-300">{error}</p>
+            </div>
+          )}
 
           <button
             type="submit"
