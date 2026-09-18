@@ -16,11 +16,13 @@ type GitHubRepository = {
     created_at: string;
     updated_at: string;
     pushed_at: string;
+    size: number;
 };
 
 type GitTreeItem = {
     path?: string;
     type?: string;
+    sha?: string;
 };
 
 type GitHubContentItem = {
@@ -85,6 +87,11 @@ type TestAnalysis = {
     frameworks: string[];
 };
 
+const LARGE_REPOSITORY_SIZE_KB = 100_000;
+const MAX_TREE_ITEMS = 12_000;
+const MAX_WORKFLOW_FILES_TO_INSPECT = 12;
+const GITHUB_FETCH_TIMEOUT_MS = 5_000;
+
 export async function analyzeRepo(owner: string, repo: string) {
     const base = `https://api.github.com/repos/${owner}/${repo}`;
 
@@ -92,16 +99,36 @@ export async function analyzeRepo(owner: string, repo: string) {
         Accept: "application/vnd.github+json",
     };
 
-    async function githubFetch(url: string, accept?: string) {
-        return fetch(url, {
-            headers: {
-                Accept: accept ?? githubHeaders.Accept,
-            },
-            next: { revalidate: 300 },
-        });
+    async function githubFetch(
+        url: string,
+        accept?: string,
+        timeoutMs = GITHUB_FETCH_TIMEOUT_MS
+    ) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+            return await fetch(url, {
+                headers: {
+                    Accept: accept ?? githubHeaders.Accept,
+                },
+                next: { revalidate: 300 },
+                signal: controller.signal,
+            });
+        } finally {
+            clearTimeout(timeout);
+        }
     }
 
-    const repoResponse = await githubFetch(base);
+    let repoResponse: Response;
+
+    try {
+        repoResponse = await githubFetch(base);
+    } catch {
+        throw new Error(
+            "The GitHub API request timed out. Please try the repository again."
+        );
+    }
 
     if (!repoResponse.ok) {
         throw new Error(
@@ -112,8 +139,12 @@ export async function analyzeRepo(owner: string, repo: string) {
     const repoData = (await repoResponse.json()) as GitHubRepository;
 
     async function exists(path: string) {
-        const response = await githubFetch(`${base}/contents/${path}`);
-        return response.ok;
+        try {
+            const response = await githubFetch(`${base}/contents/${path}`);
+            return response.ok;
+        } catch {
+            return false;
+        }
     }
 
     async function existsAny(paths: string[]) {
@@ -122,34 +153,128 @@ export async function analyzeRepo(owner: string, repo: string) {
     }
 
     async function getRawFile(path: string): Promise<string | null> {
-        const response = await githubFetch(
-            `${base}/contents/${path}`,
-            "application/vnd.github.raw+json"
-        );
+        try {
+            const response = await githubFetch(
+                `${base}/contents/${path}`,
+                "application/vnd.github.raw+json"
+            );
 
-        if (!response.ok) return null;
-        return response.text();
+            if (!response.ok) return null;
+            return response.text();
+        } catch {
+            return null;
+        }
     }
 
     async function getReadme(): Promise<string | null> {
-        const response = await githubFetch(
-            `${base}/readme`,
-            "application/vnd.github.raw+json"
-        );
+        try {
+            const response = await githubFetch(
+                `${base}/readme`,
+                "application/vnd.github.raw+json"
+            );
 
-        if (!response.ok) return null;
-        return response.text();
+            if (!response.ok) return null;
+            return response.text();
+        } catch {
+            return null;
+        }
     }
 
     async function getRepositoryTree(): Promise<GitTreeItem[]> {
-        const response = await githubFetch(
-            `${base}/git/trees/${repoData.default_branch}?recursive=1`
-        );
+        if (repoData.size >= LARGE_REPOSITORY_SIZE_KB) {
+            return getLimitedRepositoryTree();
+        }
 
-        if (!response.ok) return [];
+        try {
+            const response = await githubFetch(
+                `${base}/git/trees/${repoData.default_branch}?recursive=1`
+            );
 
-        const data = await response.json();
-        return Array.isArray(data.tree) ? data.tree : [];
+            if (!response.ok) {
+                return getLimitedRepositoryTree();
+            }
+
+            const data = (await response.json()) as {
+                tree?: GitTreeItem[];
+                truncated?: boolean;
+            };
+
+            if (!Array.isArray(data.tree)) {
+                return getLimitedRepositoryTree();
+            }
+
+            if (data.truncated || data.tree.length > MAX_TREE_ITEMS) {
+                return data.tree.slice(0, MAX_TREE_ITEMS);
+            }
+
+            return data.tree;
+        } catch {
+            return getLimitedRepositoryTree();
+        }
+    }
+
+    async function getLimitedRepositoryTree(): Promise<GitTreeItem[]> {
+        try {
+            const response = await githubFetch(
+                `${base}/git/trees/${repoData.default_branch}`
+            );
+
+            if (!response.ok) return [];
+
+            const data = (await response.json()) as { tree?: GitTreeItem[] };
+            const rootTree = Array.isArray(data.tree) ? data.tree : [];
+
+            const importantDirectories = new Set([
+                ".github",
+                "app",
+                "src",
+                "test",
+                "tests",
+                "__tests__",
+                "spec",
+                "packages",
+            ]);
+
+            const directoriesToInspect = rootTree.filter(
+                (item) =>
+                    item.type === "tree" &&
+                    item.path &&
+                    item.sha &&
+                    importantDirectories.has(item.path)
+            );
+
+            const nestedResults = await Promise.all(
+                directoriesToInspect.map(async (directory) => {
+                    try {
+                        const directoryResponse = await githubFetch(
+                            `${base}/git/trees/${directory.sha}`
+                        );
+
+                        if (!directoryResponse.ok) return [];
+
+                        const directoryData = (await directoryResponse.json()) as {
+                            tree?: GitTreeItem[];
+                        };
+
+                        if (!Array.isArray(directoryData.tree)) return [];
+
+                        return directoryData.tree.map((item) => ({
+                            ...item,
+                            path:
+                                directory.path && item.path
+                                    ? `${directory.path}/${item.path}`
+                                    : item.path,
+                        }));
+                    } catch {
+                        return [];
+                    }
+                })
+            );
+
+            return [...rootTree, ...nestedResults.flat()].slice(0, MAX_TREE_ITEMS);
+        } catch {
+            return [];
+        }
     }
 
     async function analyzePackageJson(): Promise<PackageAnalysis> {
@@ -209,77 +334,127 @@ export async function analyzeRepo(owner: string, repo: string) {
     }
 
     async function analyzeWorkflows(): Promise<WorkflowAnalysis> {
-        const response = await githubFetch(`${base}/contents/.github/workflows`);
+        try {
+            const response = await githubFetch(`${base}/contents/.github/workflows`);
 
-        if (!response.ok) {
+            if (!response.ok) {
+                return emptyWorkflowAnalysis();
+            }
+
+            const items = (await response.json()) as GitHubContentItem[];
+            const workflowFiles = items.filter(
+                (item) =>
+                    item.type === "file" &&
+                    Boolean(item.name) &&
+                    /\.(yml|yaml)$/i.test(item.name!)
+            );
+
+            const prioritizedWorkflowFiles = [...workflowFiles]
+                .sort((a, b) => {
+                    const priorityPattern =
+                        /(ci|build|test|lint|security|codeql|deploy|release)/i;
+
+                    const aPriority = priorityPattern.test(a.name ?? "") ? 0 : 1;
+                    const bPriority = priorityPattern.test(b.name ?? "") ? 0 : 1;
+
+                    if (aPriority !== bPriority) {
+                        return aPriority - bPriority;
+                    }
+
+                    return (a.name ?? "").localeCompare(b.name ?? "");
+                })
+                .slice(0, MAX_WORKFLOW_FILES_TO_INSPECT);
+
+            const contents = await Promise.all(
+                prioritizedWorkflowFiles.map(async (file) => {
+                    try {
+                        if (file.download_url) {
+                            const controller = new AbortController();
+                            const timeout = setTimeout(
+                                () => controller.abort(),
+                                GITHUB_FETCH_TIMEOUT_MS
+                            );
+
+                            try {
+                                const rawResponse = await fetch(file.download_url, {
+                                    next: { revalidate: 300 },
+                                    signal: controller.signal,
+                                });
+
+                                if (rawResponse.ok) {
+                                    return rawResponse.text();
+                                }
+                            } finally {
+                                clearTimeout(timeout);
+                            }
+                        }
+
+                        if (file.path) {
+                            return (await getRawFile(file.path)) ?? "";
+                        }
+
+                        return "";
+                    } catch {
+                        return "";
+                    }
+                })
+            );
+
+            const combined = contents.join("\n").toLowerCase();
+
+            return {
+                exists: workflowFiles.length > 0,
+                files: workflowFiles
+                    .map((file) => file.name)
+                    .filter((name): name is string => Boolean(name)),
+                hasBuild:
+                    /\bbuild\b/.test(combined) ||
+                    /npm run build|pnpm build|yarn build|dotnet build|mvn .*package|gradle .*build/.test(combined),
+                hasTest:
+                    /\btest(s|ing)?\b/.test(combined) ||
+                    /npm test|npm run test|pnpm test|yarn test|pytest|vitest|jest|dotnet test|mvn .*test|gradle .*test/.test(combined),
+                hasLint:
+                    /\blint\b/.test(combined) ||
+                    /eslint|ruff|flake8|pylint|golangci-lint/.test(combined),
+                hasTypeCheck:
+                    /typecheck|type-check|tsc --noemit|mypy|pyright/.test(combined),
+                hasDeploy:
+                    /\bdeploy\b/.test(combined) ||
+                    /vercel|netlify|pages|firebase deploy|aws-actions|azure\/webapps-deploy|google-github-actions\/deploy/.test(combined),
+                hasSecurity:
+                    /codeql|security|snyk|trivy|semgrep|dependency-review-action/.test(combined),
+                hasRelease:
+                    /\brelease\b/.test(combined) ||
+                    /softprops\/action-gh-release|semantic-release|changesets\/action/.test(combined),
+            };
+        } catch {
             return emptyWorkflowAnalysis();
         }
-
-        const items = (await response.json()) as GitHubContentItem[];
-        const workflowFiles = items.filter(
-            (item) =>
-                item.type === "file" &&
-                Boolean(item.name) &&
-                /\.(yml|yaml)$/i.test(item.name!)
-        );
-
-        const contents = await Promise.all(
-            workflowFiles.map(async (file) => {
-                if (file.download_url) {
-                    const rawResponse = await fetch(file.download_url, {
-                        next: { revalidate: 300 },
-                    });
-
-                    if (rawResponse.ok) return rawResponse.text();
-                }
-
-                if (file.path) {
-                    return (await getRawFile(file.path)) ?? "";
-                }
-
-                return "";
-            })
-        );
-
-        const combined = contents.join("\n").toLowerCase();
-
-        return {
-            exists: workflowFiles.length > 0,
-            files: workflowFiles
-                .map((file) => file.name)
-                .filter((name): name is string => Boolean(name)),
-            hasBuild:
-                /\bbuild\b/.test(combined) ||
-                /npm run build|pnpm build|yarn build|dotnet build|mvn .*package|gradle .*build/.test(
-                    combined
-                ),
-            hasTest:
-                /\btest(s|ing)?\b/.test(combined) ||
-                /npm test|npm run test|pnpm test|yarn test|pytest|vitest|jest|dotnet test|mvn .*test|gradle .*test/.test(
-                    combined
-                ),
-            hasLint:
-                /\blint\b/.test(combined) ||
-                /eslint|ruff|flake8|pylint|golangci-lint/.test(combined),
-            hasTypeCheck:
-                /typecheck|type-check|tsc --noemit|mypy|pyright/.test(combined),
-            hasDeploy:
-                /\bdeploy\b/.test(combined) ||
-                /vercel|netlify|pages|firebase deploy|aws-actions|azure\/webapps-deploy|google-github-actions\/deploy/.test(
-                    combined
-                ),
-            hasSecurity:
-                /codeql|security|snyk|trivy|semgrep|dependency-review-action/.test(combined),
-            hasRelease:
-                /\brelease\b/.test(combined) ||
-                /softprops\/action-gh-release|semantic-release|changesets\/action/.test(combined),
-        };
     }
 
     async function getLatestRelease(): Promise<ReleaseAnalysis> {
-        const response = await githubFetch(`${base}/releases/latest`);
+        try {
+            const response = await githubFetch(`${base}/releases/latest`);
 
-        if (!response.ok) {
+            if (!response.ok) {
+                return {
+                    exists: false,
+                    tag: null,
+                    publishedAt: null,
+                    daysSinceRelease: null,
+                };
+            }
+
+            const release = (await response.json()) as GitHubRelease;
+            const publishedAt = release.published_at ?? null;
+
+            return {
+                exists: Boolean(release.tag_name),
+                tag: release.tag_name ?? null,
+                publishedAt,
+                daysSinceRelease: publishedAt ? getDaysSince(publishedAt) : null,
+            };
+        } catch {
             return {
                 exists: false,
                 tag: null,
@@ -287,16 +462,6 @@ export async function analyzeRepo(owner: string, repo: string) {
                 daysSinceRelease: null,
             };
         }
-
-        const release = (await response.json()) as GitHubRelease;
-        const publishedAt = release.published_at ?? null;
-
-        return {
-            exists: Boolean(release.tag_name),
-            tag: release.tag_name ?? null,
-            publishedAt,
-            daysSinceRelease: publishedAt ? getDaysSince(publishedAt) : null,
-        };
     }
 
     const [
@@ -814,6 +979,10 @@ export async function analyzeRepo(owner: string, repo: string) {
             pushedAt: repoData.pushed_at,
             daysSinceLastPush,
             maintenanceStatus,
+            analysisMode:
+                repoData.size >= LARGE_REPOSITORY_SIZE_KB
+                    ? "limited-large-repository"
+                    : "full",
         },
 
         readme: {
@@ -1075,28 +1244,31 @@ function analyzeReadme(
     const hasDescription =
         Boolean(repositoryDescription?.trim()) || containsMeaningfulIntro(content);
 
-    const hasInstallation = hasHeading(content, [
-        "installation",
-        "install",
-        "setup",
-        "getting started",
-        "quick start",
-        "quickstart",
-    ]);
+  const hasInstallation = hasHeading(content, [
+    "installation",
+    "install",
+    "setup",
+    "development setup",
+    "getting started",
+    "quick start",
+    "quickstart",
+  ]);
 
-    const hasUsage = hasHeading(content, [
-        "usage",
-        "how to use",
-        "examples",
-        "example",
-        "demo",
-    ]);
+  const hasUsage = hasHeading(content, [
+    "usage",
+    "how to use",
+    "examples",
+    "example",
+    "demo",
+    "live demo",
+  ]);;
 
-    const hasContributing = hasHeading(content, [
-        "contributing",
-        "contribution",
-        "contributors",
-    ]);
+  const hasContributing = hasHeading(content, [
+    "contributing",
+    "contribution",
+    "contributors",
+    "development",
+  ]);
 
     const hasLicense = hasHeading(content, ["license", "licensing"]);
     const hasCodeExamples = /```[\s\S]*?```/m.test(content);
@@ -1135,26 +1307,34 @@ function analyzeReadme(
 }
 
 function hasHeading(content: string, names: string[]) {
-    const headings = content
-        .split("\n")
-        .map((line) => line.trim())
-        .filter((line) => /^#{1,6}\s+/.test(line))
-        .map((line) =>
-            line
-                .replace(/^#{1,6}\s+/, "")
-                .replace(/[^\w\s-]/g, "")
-                .trim()
-                .toLowerCase()
-        );
+  const normalize = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/&/g, " and ")
+      .replace(/[^\p{L}\p{N}\s-]/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim();
 
-    return names.some((name) =>
-        headings.some(
-            (heading) =>
-                heading === name ||
-                heading.startsWith(`${name} `) ||
-                heading.includes(name)
-        )
+  const headings = content
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => /^#{1,6}\s+/.test(line))
+    .map((line) =>
+      normalize(
+        line.replace(/^#{1,6}\s+/, "")
+      )
     );
+
+  return names.some((name) => {
+    const normalizedName = normalize(name);
+
+    return headings.some(
+      (heading) =>
+        heading === normalizedName ||
+        heading.startsWith(`${normalizedName} `) ||
+        heading.includes(normalizedName)
+    );
+  });
 }
 
 function containsMeaningfulIntro(content: string) {
