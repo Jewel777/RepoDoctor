@@ -2,888 +2,729 @@ import Link from "next/link";
 import { analyzeRepo } from "@/lib/github/analyzeRepo";
 
 type Props = {
-    params: Promise<{
-        owner: string;
-        repo: string;
-    }>;
+  params: Promise<{
+    owner: string;
+    repo: string;
+  }>;
 };
 
 type HealthState = "success" | "warning" | "danger" | "neutral";
 
 export default async function ReportPage({ params }: Props) {
-    const { owner, repo } = await params;
-    const analysis = await analyzeRepo(owner, repo);
+  const { owner, repo } = await params;
+  const analysis = await analyzeRepo(owner, repo);
 
-    const totalChecks =
-        analysis.issues.length +
-        analysis.recommendations.length +
-        analysis.passed.length;
+  const totalChecks =
+    analysis.issues.length +
+    analysis.recommendations.length +
+    analysis.passed.length;
 
-    const status =
-        analysis.overall >= 80
-            ? {
-                label: "Healthy",
-                textClass: "text-green-400",
-                borderClass: "border-green-900/40",
-                bgClass: "bg-green-950/10",
-            }
-            : analysis.overall >= 60
-                ? {
-                    label: "Needs Improvement",
-                    textClass: "text-yellow-400",
-                    borderClass: "border-yellow-900/40",
-                    bgClass: "bg-yellow-950/10",
-                }
-                : {
-                    label: "At Risk",
-                    textClass: "text-red-400",
-                    borderClass: "border-red-900/40",
-                    bgClass: "bg-red-950/10",
-                };
+  const status =
+    analysis.overall >= 80
+      ? {
+          label: "Healthy",
+          chipClass:
+            "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
+          glowClass: "shadow-emerald-500/10",
+        }
+      : analysis.overall >= 60
+        ? {
+            label: "Needs Improvement",
+            chipClass:
+              "border-amber-400/20 bg-amber-400/10 text-amber-300",
+            glowClass: "shadow-amber-500/10",
+          }
+        : {
+            label: "At Risk",
+            chipClass: "border-red-400/20 bg-red-400/10 text-red-300",
+            glowClass: "shadow-red-500/10",
+          };
 
-    const createdAt = formatDate(analysis.repository.createdAt);
-    const latestReleaseDate = analysis.release.publishedAt
-        ? formatDate(analysis.release.publishedAt)
-        : "Not available";
+  const createdAt = formatDate(analysis.repository.createdAt);
+  const latestReleaseDate = analysis.release.publishedAt
+    ? formatDate(analysis.release.publishedAt)
+    : "Not available";
 
-    return (
-        <main className="min-h-screen bg-black px-5 py-8 text-white sm:px-6 sm:py-10">
-            <div className="mx-auto max-w-7xl">
+  return (
+    <main className="relative min-h-screen overflow-hidden bg-black text-white">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute left-1/2 top-[-260px] h-[560px] w-[980px] -translate-x-1/2 rounded-full bg-emerald-500/10 blur-[150px]" />
+        <div className="absolute left-[7%] top-[34%] h-[320px] w-[320px] rounded-full bg-cyan-500/5 blur-[130px]" />
+        <div className="absolute right-[8%] top-[45%] h-[320px] w-[320px] rounded-full bg-violet-500/5 blur-[130px]" />
+      </div>
+
+      <div className="relative mx-auto max-w-7xl px-5 py-6 sm:px-6 lg:px-8">
+        <header className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 backdrop-blur-2xl sm:px-5">
           <Link
             href="/"
-            className="inline-flex items-center text-sm text-zinc-400 transition hover:text-white"
+            className="flex items-center gap-3 text-sm text-zinc-300 transition hover:text-white"
           >
-            ← Back to RepoDoctor
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-400/20 bg-emerald-400/10">
+              🩺
+            </div>
+            <div>
+              <div className="font-semibold tracking-tight">RepoDoctor</div>
+              <div className="text-[10px] text-zinc-500">
+                Repository health intelligence
+              </div>
+            </div>
           </Link>
 
-                {/* Main health summary */}
-                <section
-                    className={`mt-8 rounded-3xl border ${status.borderClass} ${status.bgClass} p-6 sm:p-8`}
-                >
-                    <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-zinc-500">
-                                Repository Health Report
-                            </p>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/compare"
+              className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-zinc-300 transition hover:bg-white/[0.07]"
+            >
+              Compare
+            </Link>
 
-                            <h1 className="mt-2 break-words text-3xl font-bold tracking-tight sm:text-4xl">
-                                {analysis.repository.fullName}
-                            </h1>
+            <a
+              href={`https://github.com/${analysis.repository.fullName}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-zinc-300 transition hover:bg-white/[0.07]"
+            >
+              GitHub ↗
+            </a>
+          </div>
+        </header>
 
-                            {analysis.repository.description && (
-                                <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-400 sm:text-base">
-                                    {analysis.repository.description}
-                                </p>
-                            )}
+        <section
+          className={`mt-8 rounded-[28px] border border-white/10 bg-white/[0.04] p-6 shadow-2xl ${status.glowClass} backdrop-blur-2xl sm:p-8`}
+        >
+          <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
+            <div>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-xs uppercase tracking-[0.18em] text-zinc-600">
+                  Repository Health Report
+                </span>
 
-                            <div className="mt-8 flex items-end gap-3">
-                                <span className="text-6xl font-bold tracking-tight sm:text-7xl">
-                                    {analysis.overall}
-                                </span>
+                {analysis.repository.analysisMode === "safe-large-repository" && (
+                  <span className="rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1 text-[11px] text-amber-300">
+                    Large repository · Safe scan
+                  </span>
+                )}
+              </div>
 
-                                <span className="pb-2 text-lg text-zinc-500 sm:text-xl">
-                                    / 100
-                                </span>
-                            </div>
+              <h1 className="mt-4 break-words text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
+                {analysis.repository.fullName}
+              </h1>
 
-                            <div className="mt-2 flex flex-wrap items-center gap-3">
-                                <p className={`text-lg font-semibold ${status.textClass}`}>
-                                    {status.label}
-                                </p>
+              {analysis.repository.description && (
+                <p className="mt-4 max-w-3xl text-sm leading-6 text-zinc-400 sm:text-base">
+                  {analysis.repository.description}
+                </p>
+              )}
 
-                                {analysis.repository.archived && (
-                                    <span className="rounded-full border border-red-900/60 bg-red-950/30 px-3 py-1 text-xs font-medium text-red-300">
-                                        Archived
-                                    </span>
-                                )}
-                            </div>
-                        </div>
+              <div className="mt-8 flex flex-wrap items-end gap-4">
+                <div className="flex items-end gap-3">
+                  <span className="text-7xl font-semibold tracking-[-0.05em] sm:text-8xl">
+                    {analysis.overall}
+                  </span>
+                  <span className="pb-3 text-base text-zinc-600">/ 100</span>
+                </div>
 
-                        <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-                            <SummaryStat
-                                value={totalChecks}
-                                label="Checks"
-                                className="border-zinc-800"
-                            />
-                            <SummaryStat
-                                value={analysis.issues.length}
-                                label="Critical"
-                                className="border-red-900/50"
-                            />
-                            <SummaryStat
-                                value={analysis.recommendations.length}
-                                label="Recommended"
-                                className="border-yellow-900/50"
-                            />
-                            <SummaryStat
-                                value={analysis.passed.length}
-                                label="Passed"
-                                className="border-green-900/50"
-                            />
-                        </div>
-                    </div>
-                </section>
+                <div className="pb-2">
+                  <span
+                    className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${status.chipClass}`}
+                  >
+                    {status.label}
+                  </span>
+                </div>
+              </div>
 
-                {/* Repository overview */}
-                <section className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950 p-6">
-                    <SectionHeading
-                        title="Repository Overview"
-                        description="Live metadata and maintenance intelligence from GitHub"
-                        action={
-                            <a
-                                href={`https://github.com/${analysis.repository.fullName}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm font-medium text-zinc-400 transition hover:text-white"
-                            >
-                                Open on GitHub ↗
-                            </a>
-                        }
-                    />
-
-                    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        <MetadataCard
-                            label="Stars"
-                            value={`★ ${analysis.repository.stars.toLocaleString()}`}
-                        />
-                        <MetadataCard
-                            label="Forks"
-                            value={`⑂ ${analysis.repository.forks.toLocaleString()}`}
-                        />
-                        <MetadataCard
-                            label="Open Issues"
-                            value={analysis.repository.openIssues.toLocaleString()}
-                        />
-                        <MetadataCard
-                            label="Language"
-                            value={analysis.repository.language ?? "Not detected"}
-                        />
-                        <MetadataCard
-                            label="Default Branch"
-                            value={analysis.repository.defaultBranch}
-                        />
-                        <MetadataCard
-                            label="Last Push"
-                            value={`${analysis.repository.daysSinceLastPush} day${analysis.repository.daysSinceLastPush === 1 ? "" : "s"
-                                } ago`}
-                        />
-                        <MetadataCard label="Created" value={createdAt} />
-                        <MetadataCard
-                            label="Maintenance"
-                            value={analysis.repository.maintenanceStatus}
-                            valueClass={getMaintenanceClass(
-                                analysis.repository.maintenanceStatus
-                            )}
-                        />
-                    </div>
-                </section>
-
-                {/* README Quality */}
-                <section className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950 p-6">
-                    <ScoreSectionHeading
-                        title="README Quality"
-                        description="Content quality, completeness, and developer usability"
-                        score={analysis.readme.qualityScore}
-                    />
-
-                    <ScoreBar score={analysis.readme.qualityScore} />
-
-                    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        <BooleanCard label="README Exists" passed={analysis.readme.exists} />
-                        <BooleanCard
-                            label="Project Description"
-                            passed={analysis.readme.hasDescription}
-                        />
-                        <BooleanCard
-                            label="Installation"
-                            passed={analysis.readme.hasInstallation}
-                        />
-                        <BooleanCard label="Usage" passed={analysis.readme.hasUsage} />
-                        <BooleanCard
-                            label="Contributing"
-                            passed={analysis.readme.hasContributing}
-                        />
-                        <BooleanCard
-                            label="License Section"
-                            passed={analysis.readme.hasLicense}
-                        />
-                        <BooleanCard
-                            label="Code Examples"
-                            passed={analysis.readme.hasCodeExamples}
-                        />
-                        <BooleanCard label="Badges" passed={analysis.readme.hasBadges} />
-                    </div>
-
-                    <div className="mt-5 flex flex-wrap items-center gap-2 text-sm text-zinc-500">
-                        <span>Approximate README length:</span>
-                        <span className="font-semibold text-zinc-300">
-                            {analysis.readme.wordCount.toLocaleString()} words
-                        </span>
-                    </div>
-                </section>
-
-                {/* Testing Intelligence */}
-                <section className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950 p-6">
-                    <ScoreSectionHeading
-                        title="Testing Intelligence"
-                        description="Automated test discovery, framework configuration, scripts, and CI execution"
-                        score={analysis.scores.Testing}
-                    />
-
-                    <ScoreBar score={analysis.scores.Testing} />
-
-                    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        <IntelligenceCard
-                            label="Test Files"
-                            value={analysis.testing.hasTests ? "Detected" : "Not detected"}
-                            state={analysis.testing.hasTests ? "success" : "danger"}
-                        />
-                        <IntelligenceCard
-                            label="Frameworks"
-                            value={
-                                analysis.testing.frameworks.length > 0
-                                    ? analysis.testing.frameworks.join(", ")
-                                    : "Not detected"
-                            }
-                            state={
-                                analysis.testing.frameworks.length > 0 ? "success" : "neutral"
-                            }
-                        />
-                        <IntelligenceCard
-                            label="Test Script"
-                            value={analysis.testing.hasTestScript ? "Configured" : "Missing"}
-                            state={analysis.testing.hasTestScript ? "success" : "warning"}
-                        />
-                        <IntelligenceCard
-                            label="CI Runs Tests"
-                            value={analysis.testing.ciRunsTests ? "Detected" : "Not detected"}
-                            state={analysis.testing.ciRunsTests ? "success" : "warning"}
-                        />
-                    </div>
-
-                    {analysis.testing.testFiles.length > 0 && (
-                        <div className="mt-5 rounded-xl border border-zinc-800 bg-black/30 p-4">
-                            <p className="text-xs font-medium uppercase tracking-wide text-zinc-600">
-                                Detected test files
-                            </p>
-                            <p className="mt-2 break-words text-sm leading-6 text-zinc-400">
-                                {analysis.testing.testFiles.slice(0, 8).join(", ")}
-                                {analysis.testing.testFiles.length > 8
-                                    ? ` +${analysis.testing.testFiles.length - 8} more`
-                                    : ""}
-                            </p>
-                        </div>
-                    )}
-                </section>
-
-                {/* CI/CD Intelligence */}
-                <section className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950 p-6">
-                    <ScoreSectionHeading
-                        title="CI/CD Intelligence"
-                        description="GitHub Actions coverage across build, test, quality, security, deployment, and release workflows"
-                        score={analysis.scores.Automation}
-                    />
-
-                    <ScoreBar score={analysis.scores.Automation} />
-
-                    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        <BooleanIntelligence
-                            label="GitHub Actions"
-                            passed={analysis.automation.workflowsExist}
-                        />
-                        <BooleanIntelligence
-                            label="Build"
-                            passed={analysis.automation.hasBuild}
-                        />
-                        <BooleanIntelligence
-                            label="Tests"
-                            passed={analysis.automation.hasTest}
-                        />
-                        <BooleanIntelligence
-                            label="Lint"
-                            passed={analysis.automation.hasLint}
-                        />
-                        <BooleanIntelligence
-                            label="Type Check"
-                            passed={analysis.automation.hasTypeCheck}
-                        />
-                        <BooleanIntelligence
-                            label="Security Scan"
-                            passed={analysis.automation.hasSecurity}
-                        />
-                        <BooleanIntelligence
-                            label="Deploy"
-                            passed={analysis.automation.hasDeploy}
-                        />
-                        <BooleanIntelligence
-                            label="Release"
-                            passed={analysis.automation.hasRelease}
-                        />
-                    </div>
-
-                    <div className="mt-5 rounded-xl border border-zinc-800 bg-black/30 p-4">
-                        <p className="text-xs font-medium uppercase tracking-wide text-zinc-600">
-                            Workflow Files
-                        </p>
-                        <p className="mt-2 break-words text-sm leading-6 text-zinc-400">
-                            {analysis.automation.workflowFiles.length > 0
-                                ? analysis.automation.workflowFiles.join(", ")
-                                : "No GitHub Actions workflow files detected."}
-                        </p>
-                    </div>
-                </section>
-
-                {/* Security Intelligence */}
-                <section className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950 p-6">
-                    <ScoreSectionHeading
-                        title="Security Intelligence"
-                        description="Security policy, dependency controls, lockfiles, and automated scanning"
-                        score={analysis.scores.Security}
-                    />
-
-                    <ScoreBar score={analysis.scores.Security} />
-
-                    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        <BooleanIntelligence
-                            label="Security Policy"
-                            passed={analysis.security.hasSecurityPolicy}
-                        />
-                        <BooleanIntelligence
-                            label="Dependabot"
-                            passed={analysis.security.dependabot}
-                        />
-                        <BooleanIntelligence
-                            label="Security Scanning"
-                            passed={analysis.security.automatedSecurityScanning}
-                        />
-                        <BooleanIntelligence
-                            label="Dependency Lockfile"
-                            passed={analysis.security.hasLockfile}
-                        />
-                    </div>
-                </section>
-
-                {/* Project Engineering */}
-                <section className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950 p-6">
-                    <ScoreSectionHeading
-                        title="Project Engineering"
-                        description="Development ergonomics, tooling, reproducibility, configuration, and code-quality signals"
-                        score={analysis.scores["Code Quality"]}
-                    />
-
-                    <ScoreBar score={analysis.scores["Code Quality"]} />
-
-                    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        <IntelligenceCard
-                            label="Package Manager"
-                            value={analysis.project.packageManager ?? "Not detected"}
-                            state={
-                                analysis.project.packageManager ? "success" : "neutral"
-                            }
-                        />
-                        <BooleanIntelligence
-                            label="package.json"
-                            passed={analysis.project.hasPackageJson}
-                        />
-                        <BooleanIntelligence
-                            label="Build Script"
-                            passed={analysis.project.hasBuildScript}
-                        />
-                        <BooleanIntelligence
-                            label="Lint Script"
-                            passed={analysis.project.hasLintScript}
-                        />
-                        <BooleanIntelligence
-                            label="Type Check Script"
-                            passed={analysis.project.hasTypeCheckScript}
-                        />
-                        <BooleanIntelligence
-                            label="TypeScript"
-                            passed={analysis.project.hasTypeScript}
-                        />
-                        <BooleanIntelligence
-                            label="Lint Config"
-                            passed={analysis.project.hasLintConfig}
-                        />
-                        <BooleanIntelligence
-                            label="Formatter Config"
-                            passed={analysis.project.hasFormatterConfig}
-                        />
-                        <BooleanIntelligence
-                            label=".editorconfig"
-                            passed={analysis.project.hasEditorConfig}
-                        />
-                        <BooleanIntelligence
-                            label=".env Example"
-                            passed={analysis.project.hasEnvExample}
-                        />
-                        <BooleanIntelligence
-                            label="Lockfile"
-                            passed={analysis.project.hasLockfile}
-                        />
-                        <BooleanIntelligence
-                            label="Dockerfile"
-                            passed={analysis.project.hasDockerfile}
-                        />
-                    </div>
-
-                    {analysis.project.scripts.length > 0 && (
-                        <div className="mt-5 rounded-xl border border-zinc-800 bg-black/30 p-4">
-                            <p className="text-xs font-medium uppercase tracking-wide text-zinc-600">
-                                package.json Scripts
-                            </p>
-                            <div className="mt-3 flex flex-wrap gap-2">
-                                {analysis.project.scripts.map((script) => (
-                                    <span
-                                        key={script}
-                                        className="rounded-full border border-zinc-800 bg-zinc-900/60 px-3 py-1 text-xs text-zinc-300"
-                                    >
-                                        {script}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </section>
-
-                {/* Release Intelligence */}
-                <section className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950 p-6">
-                    <SectionHeading
-                        title="Release Intelligence"
-                        description="Published release history and versioning signals"
-                    />
-
-                    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        <IntelligenceCard
-                            label="Release History"
-                            value={analysis.release.exists ? "Detected" : "Not detected"}
-                            state={analysis.release.exists ? "success" : "neutral"}
-                        />
-                        <MetadataCard
-                            label="Latest Tag"
-                            value={analysis.release.tag ?? "No release"}
-                        />
-                        <MetadataCard
-                            label="Published"
-                            value={latestReleaseDate}
-                        />
-                        <MetadataCard
-                            label="Age"
-                            value={
-                                analysis.release.daysSinceRelease === null
-                                    ? "Not available"
-                                    : `${analysis.release.daysSinceRelease} day${analysis.release.daysSinceRelease === 1 ? "" : "s"
-                                    } ago`
-                            }
-                        />
-                    </div>
-                </section>
-
-                {/* Category scores */}
-                <section className="mt-6">
-                    <div className="mb-4">
-                        <p className="text-sm font-semibold text-white">Category Scores</p>
-                        <p className="mt-1 text-sm text-zinc-500">
-                            Weighted health scores across the major repository-quality dimensions
-                        </p>
-                    </div>
-
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        {Object.entries(analysis.scores).map(([name, score]) => (
-                            <ScoreCard key={name} name={name} score={score} />
-                        ))}
-                    </div>
-                </section>
-
-                {/* Findings */}
-                <section className="mt-8 grid items-start gap-6 lg:grid-cols-3">
-                    <FindingColumn
-                        title="Critical Issues"
-                        count={analysis.issues.length}
-                        titleClass="text-red-400"
-                        borderClass="border-red-900/50"
-                        backgroundClass="bg-red-950/20"
-                        emptyText="No critical issues detected."
-                    >
-                        {analysis.issues.map((issue) => (
-                            <FindingCard
-                                key={issue.title}
-                                title={`⚠ ${issue.title}`}
-                                description={issue.description}
-                                titleClass="text-red-300"
-                                borderClass="border-red-900/40"
-                            />
-                        ))}
-                    </FindingColumn>
-
-                    <FindingColumn
-                        title="Recommendations"
-                        count={analysis.recommendations.length}
-                        titleClass="text-yellow-400"
-                        borderClass="border-yellow-900/50"
-                        backgroundClass="bg-yellow-950/20"
-                        emptyText="No recommendations right now."
-                    >
-                        {analysis.recommendations.map((item) => (
-                            <FindingCard
-                                key={item.title}
-                                title={`• ${item.title}`}
-                                description={item.description}
-                                titleClass="text-yellow-300"
-                                borderClass="border-yellow-900/40"
-                            />
-                        ))}
-                    </FindingColumn>
-
-                    <FindingColumn
-                        title="Passed Checks"
-                        count={analysis.passed.length}
-                        titleClass="text-green-400"
-                        borderClass="border-green-900/50"
-                        backgroundClass="bg-green-950/20"
-                        emptyText="No checks passed yet."
-                    >
-                        {analysis.passed.map((item) => (
-                            <FindingCard
-                                key={item.title}
-                                title={`✓ ${item.title}`}
-                                description={item.description}
-                                titleClass="text-green-300"
-                                borderClass="border-green-900/40"
-                            />
-                        ))}
-                    </FindingColumn>
-                </section>
+              <div className="mt-7 h-2 overflow-hidden rounded-full bg-white/5">
+                <div
+                  className={`h-full rounded-full ${getScoreGradientClass(
+                    analysis.overall
+                  )}`}
+                  style={{
+                    width: `${Math.min(Math.max(analysis.overall, 0), 100)}%`,
+                  }}
+                />
+              </div>
             </div>
-        </main>
-    );
+
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+              <SummaryStat value={totalChecks} label="Checks" />
+              <SummaryStat value={analysis.issues.length} label="Critical" tone="danger" />
+              <SummaryStat
+                value={analysis.recommendations.length}
+                label="Recommended"
+                tone="warning"
+              />
+              <SummaryStat value={analysis.passed.length} label="Passed" tone="success" />
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-[24px] border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl">
+          <SectionHeading
+            title="Repository Overview"
+            description="Live metadata and maintenance intelligence from GitHub"
+          />
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <MetadataCard label="Stars" value={`★ ${analysis.repository.stars.toLocaleString()}`} />
+            <MetadataCard label="Forks" value={`⑂ ${analysis.repository.forks.toLocaleString()}`} />
+            <MetadataCard label="Open Issues" value={analysis.repository.openIssues.toLocaleString()} />
+            <MetadataCard label="Language" value={analysis.repository.language ?? "Not detected"} />
+            <MetadataCard label="Default Branch" value={analysis.repository.defaultBranch} />
+            <MetadataCard
+              label="Last Push"
+              value={`${analysis.repository.daysSinceLastPush} day${
+                analysis.repository.daysSinceLastPush === 1 ? "" : "s"
+              } ago`}
+            />
+            <MetadataCard label="Created" value={createdAt} />
+            <MetadataCard
+              label="Maintenance"
+              value={analysis.repository.maintenanceStatus}
+              valueClass={getMaintenanceClass(analysis.repository.maintenanceStatus)}
+            />
+          </div>
+        </section>
+
+        <div className="mt-6 grid gap-6 xl:grid-cols-2">
+          <GlassScoreSection
+            title="README Quality"
+            description="Content quality, completeness, and developer usability"
+            score={analysis.readme.qualityScore}
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <BooleanCard label="README Exists" passed={analysis.readme.exists} />
+              <BooleanCard label="Project Description" passed={analysis.readme.hasDescription} />
+              <BooleanCard label="Installation" passed={analysis.readme.hasInstallation} />
+              <BooleanCard label="Usage" passed={analysis.readme.hasUsage} />
+              <BooleanCard label="Contributing" passed={analysis.readme.hasContributing} />
+              <BooleanCard label="License Section" passed={analysis.readme.hasLicense} />
+              <BooleanCard label="Code Examples" passed={analysis.readme.hasCodeExamples} />
+              <BooleanCard label="Badges" passed={analysis.readme.hasBadges} />
+            </div>
+
+            <p className="mt-4 text-xs text-zinc-600">
+              Approximate README length:{" "}
+              <span className="font-medium text-zinc-300">
+                {analysis.readme.wordCount.toLocaleString()} words
+              </span>
+            </p>
+          </GlassScoreSection>
+
+          <GlassScoreSection
+            title="Testing Intelligence"
+            description="Automated test discovery, frameworks, scripts, and CI execution"
+            score={analysis.scores.Testing}
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <IntelligenceCard
+                label="Test Files"
+                value={analysis.testing.hasTests ? "Detected" : "Not detected"}
+                state={analysis.testing.hasTests ? "success" : "danger"}
+              />
+              <IntelligenceCard
+                label="Frameworks"
+                value={
+                  analysis.testing.frameworks.length > 0
+                    ? analysis.testing.frameworks.join(", ")
+                    : "Not detected"
+                }
+                state={analysis.testing.frameworks.length > 0 ? "success" : "neutral"}
+              />
+              <IntelligenceCard
+                label="Test Script"
+                value={analysis.testing.hasTestScript ? "Configured" : "Missing"}
+                state={analysis.testing.hasTestScript ? "success" : "warning"}
+              />
+              <IntelligenceCard
+                label="CI Runs Tests"
+                value={analysis.testing.ciRunsTests ? "Detected" : "Not detected"}
+                state={analysis.testing.ciRunsTests ? "success" : "warning"}
+              />
+            </div>
+          </GlassScoreSection>
+        </div>
+
+        <div className="mt-6 grid gap-6 xl:grid-cols-2">
+          <GlassScoreSection
+            title="CI/CD Intelligence"
+            description="Build, test, quality, security, deployment, and release workflows"
+            score={analysis.scores.Automation}
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <BooleanIntelligence label="GitHub Actions" passed={analysis.automation.workflowsExist} />
+              <BooleanIntelligence label="Build" passed={analysis.automation.hasBuild} />
+              <BooleanIntelligence label="Tests" passed={analysis.automation.hasTest} />
+              <BooleanIntelligence label="Lint" passed={analysis.automation.hasLint} />
+              <BooleanIntelligence label="Type Check" passed={analysis.automation.hasTypeCheck} />
+              <BooleanIntelligence label="Security Scan" passed={analysis.automation.hasSecurity} />
+              <BooleanIntelligence label="Deploy" passed={analysis.automation.hasDeploy} />
+              <BooleanIntelligence label="Release" passed={analysis.automation.hasRelease} />
+            </div>
+          </GlassScoreSection>
+
+          <GlassScoreSection
+            title="Security Intelligence"
+            description="Security policy, dependency controls, lockfiles, and automated scanning"
+            score={analysis.scores.Security}
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <BooleanIntelligence label="Security Policy" passed={analysis.security.hasSecurityPolicy} />
+              <BooleanIntelligence label="Dependabot" passed={analysis.security.dependabot} />
+              <BooleanIntelligence
+                label="Security Scanning"
+                passed={analysis.security.automatedSecurityScanning}
+              />
+              <BooleanIntelligence label="Dependency Lockfile" passed={analysis.security.hasLockfile} />
+            </div>
+          </GlassScoreSection>
+        </div>
+
+        <GlassScoreSection
+          title="Project Engineering"
+          description="Development ergonomics, tooling, reproducibility, configuration, and code-quality signals"
+          score={analysis.scores["Code Quality"]}
+          className="mt-6"
+        >
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <IntelligenceCard
+              label="Package Manager"
+              value={analysis.project.packageManager ?? "Not detected"}
+              state={analysis.project.packageManager ? "success" : "neutral"}
+            />
+            <BooleanIntelligence label="package.json" passed={analysis.project.hasPackageJson} />
+            <BooleanIntelligence label="Build Script" passed={analysis.project.hasBuildScript} />
+            <BooleanIntelligence label="Lint Script" passed={analysis.project.hasLintScript} />
+            <BooleanIntelligence
+              label="Type Check Script"
+              passed={analysis.project.hasTypeCheckScript}
+            />
+            <BooleanIntelligence label="TypeScript" passed={analysis.project.hasTypeScript} />
+            <BooleanIntelligence label="Lint Config" passed={analysis.project.hasLintConfig} />
+            <BooleanIntelligence
+              label="Formatter Config"
+              passed={analysis.project.hasFormatterConfig}
+            />
+            <BooleanIntelligence label=".editorconfig" passed={analysis.project.hasEditorConfig} />
+            <BooleanIntelligence label=".env Example" passed={analysis.project.hasEnvExample} />
+            <BooleanIntelligence label="Lockfile" passed={analysis.project.hasLockfile} />
+            <BooleanIntelligence label="Dockerfile" passed={analysis.project.hasDockerfile} />
+          </div>
+        </GlassScoreSection>
+
+        <section className="mt-6 rounded-[24px] border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl">
+          <SectionHeading
+            title="Release Intelligence"
+            description="Published release history and versioning signals"
+          />
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <IntelligenceCard
+              label="Release History"
+              value={analysis.release.exists ? "Detected" : "Not detected"}
+              state={analysis.release.exists ? "success" : "neutral"}
+            />
+            <MetadataCard label="Latest Tag" value={analysis.release.tag ?? "No release"} />
+            <MetadataCard label="Published" value={latestReleaseDate} />
+            <MetadataCard
+              label="Age"
+              value={
+                analysis.release.daysSinceRelease === null
+                  ? "Not available"
+                  : `${analysis.release.daysSinceRelease} day${
+                      analysis.release.daysSinceRelease === 1 ? "" : "s"
+                    } ago`
+              }
+            />
+          </div>
+        </section>
+
+        <section className="mt-8">
+          <SectionHeading
+            title="Category Scores"
+            description="Weighted health scores across the major repository-quality dimensions"
+          />
+
+          <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {Object.entries(analysis.scores).map(([name, score]) => (
+              <ScoreCard key={name} name={name} score={score} />
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-8 grid items-start gap-6 lg:grid-cols-3">
+          <FindingColumn
+            title="Critical Issues"
+            count={analysis.issues.length}
+            tone="danger"
+            emptyText="No critical issues detected."
+          >
+            {analysis.issues.map((issue) => (
+              <FindingCard
+                key={issue.title}
+                title={issue.title}
+                description={issue.description}
+                tone="danger"
+              />
+            ))}
+          </FindingColumn>
+
+          <FindingColumn
+            title="Recommendations"
+            count={analysis.recommendations.length}
+            tone="warning"
+            emptyText="No recommendations right now."
+          >
+            {analysis.recommendations.map((item) => (
+              <FindingCard
+                key={item.title}
+                title={item.title}
+                description={item.description}
+                tone="warning"
+              />
+            ))}
+          </FindingColumn>
+
+          <FindingColumn
+            title="Passed Checks"
+            count={analysis.passed.length}
+            tone="success"
+            emptyText="No checks passed yet."
+          >
+            {analysis.passed.map((item) => (
+              <FindingCard
+                key={item.title}
+                title={item.title}
+                description={item.description}
+                tone="success"
+              />
+            ))}
+          </FindingColumn>
+        </section>
+
+        <footer className="mt-10 border-t border-white/5 py-7 text-center text-xs text-zinc-700">
+          RepoDoctor · Open Source · Repository health intelligence
+        </footer>
+      </div>
+    </main>
+  );
 }
 
 function SectionHeading({
-    title,
-    description,
-    action,
+  title,
+  description,
 }: {
-    title: string;
-    description: string;
-    action?: React.ReactNode;
+  title: string;
+  description: string;
 }) {
-    return (
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <p className="text-sm font-semibold text-white">{title}</p>
-                <p className="mt-1 text-sm text-zinc-500">{description}</p>
-            </div>
-            {action}
-        </div>
-    );
+  return (
+    <div>
+      <p className="text-sm font-semibold text-white">{title}</p>
+      <p className="mt-1 text-sm text-zinc-500">{description}</p>
+    </div>
+  );
 }
 
-function ScoreSectionHeading({
-    title,
-    description,
-    score,
+function GlassScoreSection({
+  title,
+  description,
+  score,
+  children,
+  className = "",
 }: {
-    title: string;
-    description: string;
-    score: number;
+  title: string;
+  description: string;
+  score: number;
+  children: React.ReactNode;
+  className?: string;
 }) {
-    return (
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <p className="text-sm font-semibold text-white">{title}</p>
-                <p className="mt-1 text-sm text-zinc-500">{description}</p>
-            </div>
-
-            <div className="flex items-end gap-2">
-                <span className={`text-4xl font-bold ${getScoreTextClass(score)}`}>
-                    {score}
-                </span>
-                <span className="pb-1 text-sm text-zinc-600">/ 100</span>
-            </div>
+  return (
+    <section
+      className={`rounded-[24px] border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl ${className}`}
+    >
+      <div className="flex items-start justify-between gap-6">
+        <div>
+          <p className="text-sm font-semibold text-white">{title}</p>
+          <p className="mt-1 text-sm text-zinc-500">{description}</p>
         </div>
-    );
+
+        <div className="flex shrink-0 items-end gap-1.5">
+          <span className={`text-3xl font-semibold ${getScoreTextClass(score)}`}>
+            {score}
+          </span>
+          <span className="pb-1 text-xs text-zinc-700">/100</span>
+        </div>
+      </div>
+
+      <ScoreBar score={score} />
+      <div className="mt-6">{children}</div>
+    </section>
+  );
 }
 
 function ScoreBar({ score }: { score: number }) {
-    return (
-        <div className="mt-5 h-2 overflow-hidden rounded-full bg-zinc-900">
-            <div
-                className={`h-full rounded-full ${getScoreBarClass(score)}`}
-                style={{
-                    width: `${Math.min(Math.max(score, 0), 100)}%`,
-                }}
-            />
-        </div>
-    );
+  return (
+    <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-white/5">
+      <div
+        className={`h-full rounded-full ${getScoreGradientClass(score)}`}
+        style={{ width: `${Math.min(Math.max(score, 0), 100)}%` }}
+      />
+    </div>
+  );
 }
 
 function SummaryStat({
-    value,
-    label,
-    className,
+  value,
+  label,
+  tone = "neutral",
 }: {
-    value: number;
-    label: string;
-    className: string;
+  value: number;
+  label: string;
+  tone?: HealthState;
 }) {
-    return (
-        <div
-            className={`min-w-[90px] rounded-2xl border bg-black/30 px-4 py-3 ${className}`}
-        >
-            <p className="text-2xl font-bold">{value}</p>
-            <p className="mt-1 text-xs text-zinc-500">{label}</p>
-        </div>
-    );
+  const classes =
+    tone === "success"
+      ? "border-emerald-400/15 bg-emerald-400/[0.05]"
+      : tone === "warning"
+        ? "border-amber-400/15 bg-amber-400/[0.05]"
+        : tone === "danger"
+          ? "border-red-400/15 bg-red-400/[0.05]"
+          : "border-white/10 bg-black/30";
+
+  return (
+    <div className={`rounded-2xl border p-4 ${classes}`}>
+      <p className="text-2xl font-semibold">{value}</p>
+      <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-zinc-600">
+        {label}
+      </p>
+    </div>
+  );
 }
 
 function MetadataCard({
-    label,
-    value,
-    valueClass = "text-zinc-200",
+  label,
+  value,
+  valueClass = "text-zinc-200",
 }: {
-    label: string;
-    value: string;
-    valueClass?: string;
+  label: string;
+  value: string;
+  valueClass?: string;
 }) {
-    return (
-        <div className="rounded-xl border border-zinc-800 bg-black/30 p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-zinc-600">
-                {label}
-            </p>
-            <p className={`mt-2 break-words text-sm font-semibold ${valueClass}`}>
-                {value}
-            </p>
-        </div>
-    );
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+      <p className="text-[11px] uppercase tracking-[0.15em] text-zinc-600">{label}</p>
+      <p className={`mt-2 break-words text-sm font-medium ${valueClass}`}>{value}</p>
+    </div>
+  );
 }
 
 function BooleanCard({
-    label,
-    passed,
+  label,
+  passed,
 }: {
-    label: string;
-    passed: boolean;
+  label: string;
+  passed: boolean;
 }) {
-    return (
-        <div
-            className={`rounded-xl border p-4 ${passed
-                    ? "border-green-900/40 bg-green-950/10"
-                    : "border-zinc-800 bg-black/30"
-                }`}
-        >
-            <div className="flex items-center gap-2">
-                <span
-                    className={`text-sm font-bold ${passed ? "text-green-400" : "text-zinc-600"
-                        }`}
-                >
-                    {passed ? "✓" : "○"}
-                </span>
-                <span
-                    className={`text-sm font-medium ${passed ? "text-zinc-200" : "text-zinc-500"
-                        }`}
-                >
-                    {label}
-                </span>
-            </div>
-        </div>
-    );
+  return (
+    <div
+      className={`rounded-2xl border p-4 ${
+        passed
+          ? "border-emerald-400/15 bg-emerald-400/[0.05]"
+          : "border-white/10 bg-black/30"
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        <span className={passed ? "text-emerald-300" : "text-zinc-700"}>
+          {passed ? "✓" : "○"}
+        </span>
+        <span className={passed ? "text-sm text-zinc-200" : "text-sm text-zinc-500"}>
+          {label}
+        </span>
+      </div>
+    </div>
+  );
 }
 
 function BooleanIntelligence({
-    label,
-    passed,
+  label,
+  passed,
 }: {
-    label: string;
-    passed: boolean;
+  label: string;
+  passed: boolean;
 }) {
-    return (
-        <IntelligenceCard
-            label={label}
-            value={passed ? "Detected" : "Not detected"}
-            state={passed ? "success" : "neutral"}
-        />
-    );
+  return (
+    <IntelligenceCard
+      label={label}
+      value={passed ? "Detected" : "Not detected"}
+      state={passed ? "success" : "neutral"}
+    />
+  );
 }
 
 function IntelligenceCard({
-    label,
-    value,
-    state,
+  label,
+  value,
+  state,
 }: {
-    label: string;
-    value: string;
-    state: HealthState;
+  label: string;
+  value: string;
+  state: HealthState;
 }) {
-    const stateClass =
-        state === "success"
-            ? "border-green-900/40 bg-green-950/10"
-            : state === "warning"
-                ? "border-yellow-900/40 bg-yellow-950/10"
-                : state === "danger"
-                    ? "border-red-900/40 bg-red-950/10"
-                    : "border-zinc-800 bg-black/30";
+  const stateClass =
+    state === "success"
+      ? "border-emerald-400/15 bg-emerald-400/[0.05]"
+      : state === "warning"
+        ? "border-amber-400/15 bg-amber-400/[0.05]"
+        : state === "danger"
+          ? "border-red-400/15 bg-red-400/[0.05]"
+          : "border-white/10 bg-black/30";
 
-    const textClass =
-        state === "success"
-            ? "text-green-400"
-            : state === "warning"
-                ? "text-yellow-400"
-                : state === "danger"
-                    ? "text-red-400"
-                    : "text-zinc-400";
+  const textClass =
+    state === "success"
+      ? "text-emerald-300"
+      : state === "warning"
+        ? "text-amber-300"
+        : state === "danger"
+          ? "text-red-300"
+          : "text-zinc-400";
 
-    const icon =
-        state === "success"
-            ? "✓"
-            : state === "warning"
-                ? "!"
-                : state === "danger"
-                    ? "✕"
-                    : "○";
+  const icon =
+    state === "success" ? "✓" : state === "warning" ? "!" : state === "danger" ? "✕" : "○";
 
-    return (
-        <div className={`rounded-xl border p-5 ${stateClass}`}>
-            <p className="text-xs font-medium uppercase tracking-wide text-zinc-600">
-                {label}
-            </p>
-
-            <div className="mt-3 flex items-start gap-2">
-                <span className={`font-bold ${textClass}`}>{icon}</span>
-                <p className={`break-words text-sm font-semibold ${textClass}`}>
-                    {value}
-                </p>
-            </div>
-        </div>
-    );
+  return (
+    <div className={`rounded-2xl border p-4 ${stateClass}`}>
+      <p className="text-[11px] uppercase tracking-[0.15em] text-zinc-600">{label}</p>
+      <div className="mt-3 flex items-start gap-2">
+        <span className={`text-sm font-semibold ${textClass}`}>{icon}</span>
+        <p className={`break-words text-sm font-medium ${textClass}`}>{value}</p>
+      </div>
+    </div>
+  );
 }
 
-function ScoreCard({
-    name,
-    score,
-}: {
-    name: string;
-    score: number;
-}) {
-    return (
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6">
-            <div className="flex items-center justify-between gap-4">
-                <p className="text-sm font-medium text-zinc-500">{name}</p>
-                <span className="text-sm text-zinc-600">/ 100</span>
-            </div>
+function ScoreCard({ name, score }: { name: string; score: number }) {
+  return (
+    <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-zinc-500">{name}</p>
+        <span className="text-[11px] text-zinc-700">/100</span>
+      </div>
 
-            <p className={`mt-2 text-3xl font-bold ${getScoreTextClass(score)}`}>
-                {score}
-            </p>
-
-            <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-zinc-900">
-                <div
-                    className={`h-full rounded-full ${getScoreBarClass(score)}`}
-                    style={{
-                        width: `${Math.min(Math.max(score, 0), 100)}%`,
-                    }}
-                />
-            </div>
-        </div>
-    );
+      <p className={`mt-3 text-3xl font-semibold ${getScoreTextClass(score)}`}>{score}</p>
+      <ScoreBar score={score} />
+    </div>
+  );
 }
 
 function FindingColumn({
-    title,
-    count,
-    titleClass,
-    borderClass,
-    backgroundClass,
-    emptyText,
-    children,
+  title,
+  count,
+  tone,
+  emptyText,
+  children,
 }: {
-    title: string;
-    count: number;
-    titleClass: string;
-    borderClass: string;
-    backgroundClass: string;
-    emptyText: string;
-    children: React.ReactNode;
+  title: string;
+  count: number;
+  tone: "success" | "warning" | "danger";
+  emptyText: string;
+  children: React.ReactNode;
 }) {
-    return (
-        <div
-            className={`rounded-2xl border p-6 ${borderClass} ${backgroundClass}`}
-        >
-            <div className="flex items-center justify-between gap-3">
-                <h2 className={`text-lg font-semibold ${titleClass}`}>{title}</h2>
+  const styles =
+    tone === "success"
+      ? "border-emerald-400/15 bg-emerald-400/[0.04]"
+      : tone === "warning"
+        ? "border-amber-400/15 bg-amber-400/[0.04]"
+        : "border-red-400/15 bg-red-400/[0.04]";
 
-                <span className="rounded-full border border-zinc-800 bg-black/30 px-2.5 py-1 text-xs text-zinc-500">
-                    {count}
-                </span>
-            </div>
+  const titleClass =
+    tone === "success"
+      ? "text-emerald-300"
+      : tone === "warning"
+        ? "text-amber-300"
+        : "text-red-300";
 
-            <div className="mt-4 space-y-3">
-                {count > 0 ? children : (
-                    <p className="text-sm text-zinc-500">{emptyText}</p>
-                )}
-            </div>
-        </div>
-    );
+  return (
+    <div className={`rounded-[24px] border p-6 backdrop-blur-xl ${styles}`}>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className={`text-lg font-semibold ${titleClass}`}>{title}</h2>
+        <span className="rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-xs text-zinc-500">
+          {count}
+        </span>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        {count > 0 ? children : <p className="text-sm text-zinc-500">{emptyText}</p>}
+      </div>
+    </div>
+  );
 }
 
 function FindingCard({
-    title,
-    description,
-    titleClass,
-    borderClass,
+  title,
+  description,
+  tone,
 }: {
-    title: string;
-    description: string;
-    titleClass: string;
-    borderClass: string;
+  title: string;
+  description: string;
+  tone: "success" | "warning" | "danger";
 }) {
-    return (
-        <div className={`rounded-xl border bg-black/30 p-4 ${borderClass}`}>
-            <p className={`text-sm font-semibold ${titleClass}`}>{title}</p>
-            <p className="mt-2 text-sm leading-5 text-zinc-400">{description}</p>
-        </div>
-    );
+  const titleClass =
+    tone === "success"
+      ? "text-emerald-200"
+      : tone === "warning"
+        ? "text-amber-200"
+        : "text-red-200";
+
+  const icon = tone === "success" ? "✓" : tone === "warning" ? "•" : "⚠";
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+      <p className={`text-sm font-medium ${titleClass}`}>
+        {icon} {title}
+      </p>
+      <p className="mt-2 text-sm leading-6 text-zinc-400">{description}</p>
+    </div>
+  );
 }
 
 function formatDate(value: string) {
-    const date = new Date(value);
+  const date = new Date(value);
 
-    if (Number.isNaN(date.getTime())) {
-        return "Unknown";
-    }
+  if (Number.isNaN(date.getTime())) {
+    return "Unknown";
+  }
 
-    return new Intl.DateTimeFormat("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        timeZone: "UTC",
-    }).format(date);
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(date);
 }
 
 function getMaintenanceClass(status: string) {
-    switch (status) {
-        case "Active":
-            return "text-green-400";
-        case "Needs Attention":
-            return "text-yellow-400";
-        case "Stale":
-            return "text-orange-400";
-        case "Inactive":
-        case "Archived":
-            return "text-red-400";
-        default:
-            return "text-zinc-200";
-    }
-}
-
-function getScoreBarClass(score: number) {
-    if (score >= 80) return "bg-green-400";
-    if (score >= 60) return "bg-yellow-400";
-    return "bg-red-400";
+  switch (status) {
+    case "Active":
+      return "text-emerald-300";
+    case "Needs Attention":
+      return "text-amber-300";
+    case "Stale":
+      return "text-orange-300";
+    case "Inactive":
+    case "Archived":
+      return "text-red-300";
+    default:
+      return "text-zinc-200";
+  }
 }
 
 function getScoreTextClass(score: number) {
-    if (score >= 80) return "text-green-400";
-    if (score >= 60) return "text-yellow-400";
-    return "text-red-400";
+  if (score >= 80) return "text-emerald-300";
+  if (score >= 60) return "text-amber-300";
+  return "text-red-300";
+}
+
+function getScoreGradientClass(score: number) {
+  if (score >= 80) return "bg-gradient-to-r from-emerald-500 to-cyan-400";
+  if (score >= 60) return "bg-gradient-to-r from-amber-400 to-yellow-300";
+  return "bg-gradient-to-r from-red-500 to-orange-400";
 }
