@@ -1,246 +1,362 @@
+
 <div align="center">
 
-!\[RepoDoctor — Repository health, made understandable](./repo-doctor-banner.svg)
+# 🩺 RepoDoctor
 
-**A clearer way to understand the engineering health of a GitHub repository.**
+### Your GitHub Repository Deserves a Health Check.
 
-Paste a public repository, explore its strengths and gaps, or compare two projects side by side.
+**Analyze smarter. Compare better. Build stronger.**
 
-[!\[Open App](https://img.shields.io/badge/OPEN\_THE\_APP-RepoDoctor-0E776D?style=for-the-badge\&logo=vercel\&logoColor=white)](https://repo-doctor-hazel.vercel.app)
-[!\[Browse Source](https://img.shields.io/badge/VIEW\_SOURCE-GitHub-1D2939?style=for-the-badge\&logo=github\&logoColor=white)](https://github.com/Jewel777/RepoDoctor)
+An open-source repository intelligence tool that transforms GitHub repository data into meaningful health scores, engineering insights, and actionable recommendations.
 
-<br/>
+[![Live Demo](https://img.shields.io/badge/🚀_LAUNCH_REPODOCTOR-0D9488?style=for-the-badge)](https://repo-doctor-hazel.vercel.app)
+[![GitHub](https://img.shields.io/badge/EXPLORE_SOURCE-181717?style=for-the-badge&logo=github)](https://github.com/Jewel777/RepoDoctor)
 
-[**Explore**](#-a-repository-checkup-in-three-steps) · [**See the app**](#-inside-the-app) · [**What it checks**](#-what-repodoctor-looks-for) · [**Compare**](#-two-repositories-one-view) · [**Run locally**](#-run-it-locally)
+<br>
 
-<br/>
+[![CI](https://github.com/Jewel777/RepoDoctor/actions/workflows/ci.yml/badge.svg)](https://github.com/Jewel777/RepoDoctor/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/Jewel777/RepoDoctor/actions/workflows/codeql.yml/badge.svg)](https://github.com/Jewel777/RepoDoctor/actions/workflows/codeql.yml)
+[![Release](https://img.shields.io/github/v/release/Jewel777/RepoDoctor?color=blue&label=Release)](https://github.com/Jewel777/RepoDoctor/releases)
+[![License](https://img.shields.io/badge/License-MIT-10B981.svg)](LICENSE)
 
-[!\[CI](https://github.com/Jewel777/RepoDoctor/actions/workflows/ci.yml/badge.svg)](https://github.com/Jewel777/RepoDoctor/actions/workflows/ci.yml)
-[!\[CodeQL](https://github.com/Jewel777/RepoDoctor/actions/workflows/codeql.yml/badge.svg)](https://github.com/Jewel777/RepoDoctor/actions/workflows/codeql.yml)
-[!\[Release](https://img.shields.io/github/v/release/Jewel777/RepoDoctor?label=release\&color=3C8D9A)](https://github.com/Jewel777/RepoDoctor/releases)
-[!\[MIT](https://img.shields.io/badge/license-MIT-0E776D)](LICENSE)
+---
+
+**[Overview](#-why-repodoctor) • [Live Preview](#-see-repodoctor-in-action) • [Features](#-what-can-repodoctor-analyze) • [Comparison](#-compare-two-repositories) • [Installation](#-get-started)**
 
 </div>
 
-\---
+## 💡 Why RepoDoctor?
 
-## The problem RepoDoctor solves
+A repository can have thousands of stars and still lack essential engineering practices.
 
-A GitHub repository can look polished at first glance and still be missing tests, security guidance, or a reliable build workflow. Finding those gaps often means opening dozens of files and settings by hand.
+How do you know whether a GitHub project has proper testing, security policies, automation, documentation, and maintenance?
 
-**RepoDoctor turns that inspection into a readable report.** It uses discoverable repository signals to show what's in place, what's missing, and where to focus next.
+Manually reviewing these details takes time.
 
-<table>
-<tr><td width="50%" valign="top">
+**RepoDoctor simplifies that process.**
 
-### Without RepoDoctor
-
-* Dig through configuration files and folders
-* Piece together testing and CI/CD practices
-* Manually check maintenance and community files
-* Compare projects from memory
-
-</td><td width="50%" valign="top">
-
-### With RepoDoctor
-
-* Start from a public repository URL
-* See category scores and diagnostic findings
-* Review prioritized recommendations and passed checks
-* Compare two repositories on the same criteria
-
-</td></tr>
-</table>
-
-## 🧭 A repository checkup in three steps
+Enter a public GitHub repository and receive a structured health assessment that highlights its strengths, identifies missing practices, and recommends improvements.
 
 <table>
 <tr>
-<td width="33%" valign="top"><h3>01 · Paste</h3><p>Enter a public GitHub repository URL. No local checkout is needed for the web-based analysis.</p></td>
-<td width="33%" valign="top"><h3>02 · Understand</h3><p>Explore the overall health score, category breakdown, and the evidence behind diagnostic findings.</p></td>
-<td width="33%" valign="top"><h3>03 · Improve</h3><p>Use prioritized issues and recommendations to decide what to work on next.</p></td>
+<td width="50%">
+
+### 🔎 Discover Problems
+
+Identify gaps in documentation, testing, security, and engineering workflows.
+
+</td>
+<td width="50%">
+
+### 📊 Understand Health
+
+Explore repository health scores and individual category assessments.
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 🛠️ Improve Quality
+
+Use prioritized recommendations to strengthen repository practices.
+
+</td>
+<td width="50%">
+
+### ⚖️ Compare Projects
+
+Evaluate two repositories side by side using the same scoring approach.
+
+</td>
 </tr>
 </table>
 
+---
+
+## 🖥️ See RepoDoctor in Action
+
+### 01 — Repository Health Analysis
+
+**One repository. One comprehensive engineering overview.**
+
+Enter a public GitHub repository URL to inspect its engineering health.
+
+The report combines category scores, repository metadata, passed checks, critical findings, and recommendations into an understandable assessment.
+
+![RepoDoctor Homepage](https://raw.githubusercontent.com/Jewel777/RepoDoctor/main/Home.png)
+
 <div align="center">
 
-**Try it with a project you know**
-
-[Launch RepoDoctor →](https://repo-doctor-hazel.vercel.app)
+*Explore the repository analysis experience.*
 
 </div>
 
-\---
+### 02 — Repository Comparison
 
-## 📸 Inside the app
+**Two projects. One consistent evaluation.**
 
-### Repository analysis
+RepoDoctor v1.1 introduces side-by-side repository comparison.
 
-**A useful overview, without reading the entire repository first.** RepoDoctor summarizes engineering signals across documentation, security, testing, automation, maintenance, community health, and code quality.
+Understand how two open-source projects differ in documentation, security, testing, maintenance, automation, and other engineering categories.
 
-!\[RepoDoctor repository analysis homepage](./Home.png)
+![RepoDoctor Comparison](https://raw.githubusercontent.com/Jewel777/RepoDoctor/main/compare.png)
 
-<sub>Repository entry and analysis experience. Screenshot from the project.</sub>
+<div align="center">
 
-### Repository comparison
+[![Try Comparison](https://img.shields.io/badge/TRY_REPOSITORY_COMPARISON-2563EB?style=for-the-badge)](https://repo-doctor-hazel.vercel.app)
 
-**Not sure which project follows stronger engineering practices?** Put two public repositories side by side and examine category winners and overall results.
+</div>
 
-!\[RepoDoctor side-by-side comparison](./compare.png)
+---
 
-<sub>Side-by-side repository comparison. Screenshot from the project.</sub>
-
-\---
-
-## 🔍 What RepoDoctor looks for
-
-Rather than presenting one opaque score, RepoDoctor breaks a repository into understandable areas.
-
-|Area|What gets inspected|Why it matters|
-|-|-|-|
-|**📖 Documentation**|README quality and completeness|Helps newcomers understand and use the project|
-|**🛡️ Security**|Security policy, scanning configuration, Dependabot and lockfiles|Reveals visible security maintenance practices|
-|**🧪 Testing**|Test files and testing-framework signals|Shows evidence of automated verification|
-|**⚙️ Automation**|GitHub Actions and CI/CD workflows|Makes quality checks more repeatable|
-|**🔧 Maintenance**|Repository activity, metadata and release history|Provides context about ongoing upkeep|
-|**🤝 Community**|Contributing guidance and issue/PR templates|Reduces friction for collaborators|
-|**💻 Engineering**|TypeScript, linting, formatting, build scripts, environment templates and Docker|Highlights project tooling and consistency|
-
-**The report also includes:** passed checks, prioritized critical issues, recommended improvements, and repository metadata.
-
-> \[!NOTE]
-> RepoDoctor evaluates observable repository signals. A high score does \*\*not\*\* certify that code is secure, bug-free, well-architected, or suitable for production. Missing configuration signals are not proof that a practice never occurs.
-
-\---
-
-## ⚖️ Two repositories. One view.
-
-**Repository Comparison** (introduced in v1.1) applies the same scoring approach to both public projects.
+## 🚀 How It Works
 
 <table>
-<tr><td width="50%" valign="top">
+<tr align="center">
+<td width="33%">
 
-**Repository A**
+### 01
 
-```text
-facebook/react
-```
+**ENTER**
 
-</td><td width="50%" valign="top">
+Paste a public GitHub repository URL.
 
-**Repository B**
+</td>
+<td width="33%">
 
-```text
-vuejs/core
-```
+### 02
 
-</td></tr>
+**ANALYZE**
+
+RepoDoctor evaluates detectable engineering signals and repository configuration.
+
+</td>
+<td width="33%">
+
+### 03
+
+**IMPROVE**
+
+Review findings, category scores, and prioritized recommendations.
+
+</td>
+</tr>
 </table>
 
-Compare:
+**Example repository:**
 
-* **Overall health** — high-level assessment for each repository
-* **Category scores** — documentation, security, testing and other dimensions
-* **Category winners** — where each repository has stronger detectable signals
+```text
+https://github.com/facebook/react
+```
 
-A comparison is a starting point for technical evaluation, **not** a definitive ranking of code or architecture.
+No local repository download is required to use the live analyzer.
 
-<div align="center">
+---
 
-[Open the comparison experience →](https://repo-doctor-hazel.vercel.app)
+## 🧩 What Can RepoDoctor Analyze?
 
-</div>
+RepoDoctor evaluates seven core areas of repository health.
 
-\---
+| Category | What RepoDoctor Checks |
+|:---|:---|
+| 📚 **Documentation** | README quality, completeness, and supporting documentation |
+| 🛡️ **Security** | Security policies, Dependabot, dependency lockfiles, and scanning configuration |
+| 🧪 **Testing** | Test files, testing frameworks, and testing-related signals |
+| ⚙️ **CI/CD & Automation** | GitHub Actions and automation workflows |
+| 🔧 **Maintenance** | Repository activity, metadata, and release practices |
+| 🤝 **Community Health** | Contribution guidelines and issue / pull request templates |
+| 💻 **Engineering Quality** | TypeScript, linting, formatting, build scripts, environment templates, and Docker |
 
-## 🧩 Designed for real repository workflows
+### Beyond Basic Repository Scanning
 
-|If you're…|RepoDoctor helps you…|
-|-|-|
-|**Maintaining an open-source project**|Find missing engineering and community-health basics|
-|**Considering a dependency**|Inspect visible quality and maintenance signals before exploring the source|
-|**Joining an unfamiliar project**|Understand its tooling, checks and collaboration conventions|
-|**Comparing alternatives**|Examine two projects using consistent categories|
-|**Learning software engineering**|See concrete examples of practices used by public projects|
+RepoDoctor also provides:
 
-### Beyond a quick scan
+- Overall and category-level health scoring
+- Prioritized critical issues and improvement recommendations
+- Passed-check visibility
+- Repository metadata and release intelligence
+- Large-repository safe scanning
+- Authenticated GitHub API support
+- Responsive desktop and mobile interface
 
-* **Large-repository safe scanning** helps handle bigger public repositories.
-* **Authenticated GitHub API support** can improve the reliability of repository data retrieval.
-* **Responsive interface** supports desktop and mobile browsing.
-* **Release and maintenance intelligence** adds context beyond static file checks.
+> **Note:** RepoDoctor scores detectable repository practices. A high score does not guarantee secure, bug-free, or production-ready software.
 
-\---
+---
 
-## 🛠️ Run it locally
+## ⚖️ Compare Two Repositories
 
-**Requirements:** Node.js 24 and npm (matching the project's CI environment).
+Choosing between open-source projects?
+
+RepoDoctor helps you compare their detectable engineering practices without manually inspecting every configuration file.
+
+**Example: React vs. Vue**
+
+```text
+Repository A: facebook/react
+Repository B: vuejs/core
+```
+
+### Comparison Results Include
+
+| Evaluation | Description |
+|:---|:---|
+| Overall Health | Overall assessment for each repository |
+| Category Scores | Side-by-side engineering category results |
+| Category Winners | Highlights areas where each project scores higher |
+| Comparative Results | Structured comparison using consistent criteria |
+
+**A higher repository health score does not necessarily mean better application code.** Use the findings as one input when evaluating software projects.
+
+---
+
+## 👥 Who Is RepoDoctor For?
+
+<table>
+<tr>
+<td width="50%">
+
+**👨‍💻 Developers**
+
+Understand the engineering practices of unfamiliar repositories.
+
+</td>
+<td width="50%">
+
+**🧑‍🔧 Maintainers**
+
+Discover improvements needed to strengthen open-source projects.
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+**🏢 Engineering Teams**
+
+Compare repository practices across public projects.
+
+</td>
+<td width="50%">
+
+**🎓 Students & Researchers**
+
+Explore practical repository engineering and maintenance signals.
+
+</td>
+</tr>
+</table>
+
+---
+
+## 🛠️ Get Started
+
+### Option 1 — Use Online
+
+Open the live application:
+
+**https://repo-doctor-hazel.vercel.app**
+
+Enter a public GitHub repository URL and start analyzing.
+
+### Option 2 — Run Locally
+
+**Requirements:** Node.js 24 and npm.
+
+Clone the repository:
 
 ```bash
 git clone https://github.com/Jewel777/RepoDoctor.git
 cd RepoDoctor
+```
+
+Install dependencies:
+
+```bash
 npm ci
+```
+
+Start the development server:
+
+```bash
 npm run dev
 ```
 
-Open **http://localhost:3000** in your browser.
+Open:
 
-For GitHub API access, consult the repository's configuration and provide any required local environment values. Do not commit tokens or `.env.local` files.
-
-<details>
-<summary><strong>Developer commands</strong> — lint, type-check, test and build</summary>
-
-```bash
-npm run lint
-npm run typecheck
-npm test
-npm run build
-npm audit --audit-level=high
+```text
+http://localhost:3000
 ```
 
-The repository's CI workflow runs these quality checks on pull requests to `main`.
+### Development Commands
 
-</details>
+| Command | Purpose |
+|:---|:---|
+| `npm run dev` | Start development server |
+| `npm run lint` | Run ESLint |
+| `npm run typecheck` | Check TypeScript |
+| `npm test` | Run automated tests |
+| `npm run build` | Create production build |
+| `npm audit` | Check dependency advisories |
 
-<details>
-<summary><strong>Technology</strong> — implementation at a glance</summary>
+---
 
-|Layer|Technology|
-|-|-|
-|Application|Next.js App Router|
-|UI|React, TypeScript|
-|Styling|Tailwind CSS|
-|Tests|Vitest|
-|Quality|ESLint, TypeScript checks|
-|Automation|GitHub Actions|
-|Security analysis|CodeQL|
-
-</details>
-
-\---
-
-## 🤝 Contribute to RepoDoctor
-
-There are several useful ways to help: report an incorrect finding, suggest a new repository signal, improve documentation, or contribute an implementation change.
-
-1. [Check open issues](https://github.com/Jewel777/RepoDoctor/issues) for existing discussions.
-2. Open an issue for bugs or proposed changes.
-3. Create a focused branch and submit a pull request.
-4. Include the checks you ran and explain any scoring behavior changes.
-
-Please report sensitive security issues privately using the repository's available security-reporting guidance rather than a public issue.
-
-\---
+## ⚡ Technology Stack
 
 <div align="center">
 
-### Better signals. Better repository decisions.
-
-**Explore a project in minutes, then investigate what matters.**
-
-[**Launch RepoDoctor**](https://repo-doctor-hazel.vercel.app) · [**Report an issue**](https://github.com/Jewel777/RepoDoctor/issues) · [**View releases**](https://github.com/Jewel777/RepoDoctor/releases)
-
-<sub>Open-source software · MIT License</sub>
+![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white)
+![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel&logoColor=white)
 
 </div>
 
+RepoDoctor uses **Next.js, React, TypeScript, and Tailwind CSS**, with Vitest for testing, ESLint for code quality, GitHub Actions for CI, and CodeQL for security analysis.
+
+---
+
+## 🤝 Contributing
+
+RepoDoctor is open source, and contributions are welcome.
+
+You can contribute by:
+
+1. Reporting bugs or incorrect analysis results.
+2. Suggesting new repository health checks.
+3. Improving documentation or the user interface.
+4. Submitting focused pull requests.
+
+Read the repository's contributing guidelines before making substantial changes.
+
+[![Contribute](https://img.shields.io/badge/CONTRIBUTE_ON_GITHUB-181717?style=for-the-badge&logo=github)](https://github.com/Jewel777/RepoDoctor/issues)
+
+---
+
+## 📄 License
+
+Distributed under the **MIT License**.
+
+See [LICENSE](LICENSE) for details.
+
+---
+
+<div align="center">
+
+## 🩺 Build Healthier Repositories.
+
+**Better visibility. Better engineering decisions.**
+
+Make repository health easier to understand, compare, and improve.
+
+[![Launch RepoDoctor](https://img.shields.io/badge/LAUNCH_REPODOCTOR-0D9488?style=for-the-badge&logo=vercel&logoColor=white)](https://repo-doctor-hazel.vercel.app)
+
+<br>
+
+[GitHub Repository](https://github.com/Jewel777/RepoDoctor) · [Report an Issue](https://github.com/Jewel777/RepoDoctor/issues) · [Releases](https://github.com/Jewel777/RepoDoctor/releases)
+
+<sub>Made for developers, maintainers, and open-source communities.</sub>
+
+</div>
