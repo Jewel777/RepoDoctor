@@ -84,7 +84,7 @@ Enter a public GitHub repository URL to inspect its engineering health.
 
 The report combines category scores, repository metadata, passed checks, critical findings, and recommendations into an understandable assessment.
 
-![RepoDoctor Homepage](https://raw.githubusercontent.com/Jewel777/RepoDoctor/main/Home.png)
+![RepoDoctor Homepage](https://raw.githubusercontent.com/Jewel777/RepoDoctor/main/Home11.png)
 
 <div align="center">
 
@@ -100,7 +100,7 @@ RepoDoctor v1.1 introduces side-by-side repository comparison.
 
 Understand how two open-source projects differ in documentation, security, testing, maintenance, automation, and other engineering categories.
 
-![RepoDoctor Comparison](https://raw.githubusercontent.com/Jewel777/RepoDoctor/main/compare.png)
+![RepoDoctor Comparison](https://raw.githubusercontent.com/Jewel777/RepoDoctor/main/compare11.png)
 
 <div align="center">
 
