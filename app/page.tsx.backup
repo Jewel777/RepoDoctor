@@ -1,0 +1,1196 @@
+"use client";
+
+import {
+  Activity,
+  ArrowRight,
+  BarChart3,
+  Check,
+  ChevronRight,
+  Clipboard,
+  Clock3,
+  Copy,
+  Download,
+  FileSearch,
+  FileText,
+  Gauge,
+  History,
+  Layers3,
+  ListChecks,
+  LoaderCircle,
+  RotateCcw,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  UploadCloud,
+  WandSparkles,
+  Zap,
+} from "lucide-react";
+import { DragEvent, ReactNode, useEffect, useMemo, useState } from "react";
+
+type Stats = {
+  source_sentences: number;
+  chunks_created: number;
+  chunks_selected: number;
+  candidate_sentences: number;
+  sentences_selected: number;
+  duplicates_suppressed: number;
+  selected_pages: number;
+  selected_sections: number;
+  embedding_cache_items: number;
+  elapsed_ms: number;
+};
+
+type SourceTrace = {
+  page?: number | null;
+  section?: string | null;
+  sentence: string;
+  semantic_score: number;
+  priority_score: number;
+};
+
+type Result = {
+  task?: string;
+  mode?: string;
+  token_budget?: number;
+  original_tokens: number;
+  optimized_tokens: number;
+  tokens_saved: number;
+  reduction_percent: number;
+  retrieval_confidence?: number;
+  optimized_text: string;
+  selected_context_text?: string;
+  selected_context_tokens?: number;
+  compiled_prompt_tokens?: number;
+  output_mode?: string;
+  threshold?: number;
+  filename?: string;
+  headings_detected?: number;
+  processing_stats?: Stats;
+  sources?: SourceTrace[];
+};
+
+type HistoryEntry = {
+  id: string;
+  createdAt: string;
+  sourceLabel: string;
+  task: string;
+  mode: string;
+  budget: number;
+  result: Result;
+};
+
+type ResultTab = "output" | "sources" | "diagnostics";
+type OutputTarget = "raw" | "chatgpt" | "claude" | "gemini";
+
+const HISTORY_KEY = "contextforge_history_v2_1";
+
+const presets = [
+  { name: "Security rules", task: "Extract authentication, authorization, password, token expiration, MFA, account lockout, and other security requirements." },
+  { name: "Research findings", task: "Extract the study objective, methods, key numeric results, limitations, and conclusions." },
+  { name: "Technical requirements", task: "Extract system requirements, limits, dependencies, configuration values, interfaces, and failure behavior." },
+  { name: "Executive summary", task: "Extract the most decision-relevant facts, numbers, risks, constraints, and recommended actions." },
+];
+
+const modeInfo: Record<string, { label: string; description: string; badge: string }> = {
+  safe: { label: "Safe", description: "Keeps more supporting context", badge: "~90% target" },
+  balanced: { label: "Balanced", description: "Best default for most work", badge: "~78% target" },
+  aggressive: { label: "Aggressive", description: "Prioritizes the smallest context", badge: "~60% target" },
+};
+
+const loadingStages = [
+  "Reading source",
+  "Ranking sections",
+  "Selecting evidence",
+  "Packing token budget",
+];
+
+export default function Home() {
+  const [inputMode, setInputMode] = useState<"file" | "text">("file");
+  const [file, setFile] = useState<File | null>(null);
+  const [text, setText] = useState("");
+  const [task, setTask] = useState("");
+  const [mode, setMode] = useState("balanced");
+  const [budget, setBudget] = useState(1000);
+  const [result, setResult] = useState<Result | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loadingStage, setLoadingStage] = useState(0);
+  const [error, setError] = useState("");
+  const [toast, setToast] = useState("");
+  const [online, setOnline] = useState<boolean | null>(null);
+  const [engineVersion, setEngineVersion] = useState("2.1");
+  const [dragging, setDragging] = useState(false);
+  const [resultTab, setResultTab] = useState<ResultTab>("output");
+  const [outputTarget, setOutputTarget] = useState<OutputTarget>("raw");
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/health")
+      .then(async (r) => {
+        setOnline(r.ok);
+        if (r.ok) {
+          const data = await r.json();
+          if (data.version) setEngineVersion(data.version);
+        }
+      })
+      .catch(() => setOnline(false));
+
+    try {
+      const saved = localStorage.getItem(HISTORY_KEY);
+      if (saved) setHistory(JSON.parse(saved));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      setLoadingStage(0);
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setLoadingStage((current) => Math.min(current + 1, loadingStages.length - 1));
+    }, 850);
+    return () => window.clearInterval(timer);
+  }, [loading]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(""), 1800);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
+  const fileSize = useMemo(() => {
+    if (!file) return "";
+    const mb = file.size / 1024 / 1024;
+    return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.ceil(file.size / 1024)} KB`;
+  }, [file]);
+
+  const sourceLabel = inputMode === "file" ? file?.name ?? "Uploaded file" : "Pasted text";
+
+  const formattedOutput = useMemo(() => {
+    if (!result) return "";
+    const context = result.optimized_text;
+    if (outputTarget === "raw") return context;
+    if (outputTarget === "chatgpt") {
+      return `Use the compiled context below as the authoritative source for the task. Preserve stated constraints and do not invent missing facts.\n\nTASK\n${task}\n\nCOMPILED CONTEXT\n${context}`;
+    }
+    if (outputTarget === "claude") {
+      return `<task>\n${task}\n</task>\n\n<context>\n${context}\n</context>\n\nUse only the supplied context for factual claims. Preserve source references where present.`;
+    }
+    return `TASK:\n${task}\n\nCONTEXT:\n${context}\n\nINSTRUCTION:\nUse the context above to complete the task. Keep factual claims grounded in the supplied material.`;
+  }, [result, outputTarget, task]);
+
+  const budgetUsage = result ? Math.min(100, Math.round((result.optimized_tokens / Math.max(1, budget)) * 100)) : 0;
+
+  function acceptFile(next: File | null) {
+    if (!next) return;
+    const ext = next.name.split(".").pop()?.toLowerCase();
+    if (!["pdf", "docx", "txt"].includes(ext ?? "")) {
+      setError("Supported file types: PDF, DOCX, TXT.");
+      return;
+    }
+    if (next.size > 25 * 1024 * 1024) {
+      setError("File is larger than the 25 MB upload limit.");
+      return;
+    }
+    setFile(next);
+    setError("");
+    setResult(null);
+  }
+
+  function onDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setDragging(false);
+    acceptFile(event.dataTransfer.files?.[0] ?? null);
+  }
+
+  function persistHistory(entry: HistoryEntry) {
+    const next = [entry, ...history.filter((item) => item.id !== entry.id)].slice(0, 8);
+    setHistory(next);
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+    } catch {}
+  }
+
+  async function compile() {
+    setError("");
+    setResult(null);
+    setResultTab("output");
+
+    if (!task.trim()) {
+      setError("Tell ContextForge what the AI should do with the content.");
+      return;
+    }
+    if (inputMode === "file" && !file) {
+      setError("Drop or choose a PDF, DOCX, or TXT file.");
+      return;
+    }
+    if (inputMode === "text" && !text.trim()) {
+      setError("Paste source text first.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      let response: Response;
+
+      if (inputMode === "text") {
+        response = await fetch("/api/optimize-text", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, task: task.trim(), mode, token_budget: budget }),
+        });
+      } else {
+        const body = new FormData();
+        body.append("file", file!);
+        body.append("task", task.trim());
+        body.append("mode", mode);
+        body.append("token_budget", String(budget));
+        response = await fetch("/api/optimize-file", { method: "POST", body });
+      }
+
+      const raw = await response.text();
+      if (!response.ok) {
+        let message = raw;
+        try {
+          const parsed = JSON.parse(raw);
+          message = parsed.detail ?? parsed.error ?? raw;
+        } catch {}
+        throw new Error(message);
+      }
+
+      const parsed: Result = JSON.parse(raw);
+      setResult(parsed);
+      setOnline(true);
+      persistHistory({
+        id: `${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        sourceLabel,
+        task: task.trim(),
+        mode,
+        budget,
+        result: parsed,
+      });
+      setToast("Context compiled");
+    } catch (err) {
+      setOnline(false);
+      setError(err instanceof Error ? err.message : "Compilation failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function restoreHistory(entry: HistoryEntry) {
+    setTask(entry.task);
+    setMode(entry.mode);
+    setBudget(entry.budget);
+    setResult(entry.result);
+    setOutputTarget("raw");
+    setResultTab("output");
+    setHistoryOpen(false);
+    setToast("Previous compilation restored");
+  }
+
+  async function copyOutput() {
+    if (!formattedOutput) return;
+    await navigator.clipboard.writeText(formattedOutput);
+    setToast(`Copied ${outputTarget === "raw" ? "context" : outputTarget} format`);
+  }
+
+  function exportOutput(ext: "txt" | "md") {
+    if (!formattedOutput) return;
+    const header = ext === "md"
+      ? `# ContextForge Output\n\n**Task:** ${task}\n\n**Output target:** ${outputTarget}\n\n`
+      : `ContextForge Output\nTask: ${task}\nOutput target: ${outputTarget}\n\n`;
+    const blob = new Blob([header + formattedOutput], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `contextforge-${outputTarget}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function resetWorkbench() {
+    setFile(null);
+    setText("");
+    setTask("");
+    setResult(null);
+    setError("");
+    setBudget(1000);
+    setMode("balanced");
+    setResultTab("output");
+    setOutputTarget("raw");
+  }
+
+  return (
+    <main className="min-h-screen bg-[#eef3fb] text-[#111827]">
+      <style jsx global>{`
+        :root {
+          color-scheme: light;
+        }
+
+        @keyframes cf-rise {
+          from { opacity: 0; transform: translateY(16px) scale(.985); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes cf-float {
+          0%, 100% { transform: translate3d(0, 0, 0); }
+          50% { transform: translate3d(0, -5px, 0); }
+        }
+
+        @keyframes cf-orbit {
+          0% { transform: translate3d(-2%, -1%, 0) scale(1); }
+          50% { transform: translate3d(4%, 3%, 0) scale(1.08); }
+          100% { transform: translate3d(-2%, -1%, 0) scale(1); }
+        }
+
+        @keyframes cf-shimmer {
+          from { transform: translateX(-130%) skewX(-18deg); }
+          to { transform: translateX(260%) skewX(-18deg); }
+        }
+
+        @keyframes cf-pulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(10,132,255,.18); }
+          50% { box-shadow: 0 0 0 8px rgba(10,132,255,0); }
+        }
+
+        .cf-enter {
+          animation: cf-rise .55s cubic-bezier(.16,1,.3,1) both;
+        }
+
+        .cf-float {
+          animation: cf-float 5s ease-in-out infinite;
+        }
+
+        .cf-orbit {
+          animation: cf-orbit 14s ease-in-out infinite;
+        }
+
+        .cf-glass {
+          background:
+            linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.46));
+          border: 1px solid rgba(255,255,255,.7);
+          box-shadow:
+            0 18px 48px rgba(15,23,42,.10),
+            inset 0 1px 0 rgba(255,255,255,.86);
+          backdrop-filter: blur(26px) saturate(180%);
+          -webkit-backdrop-filter: blur(26px) saturate(180%);
+        }
+
+        .cf-glass-strong {
+          background:
+            linear-gradient(180deg, rgba(255,255,255,.86), rgba(255,255,255,.62));
+          border: 1px solid rgba(255,255,255,.82);
+          box-shadow:
+            0 24px 70px rgba(37,99,235,.12),
+            inset 0 1px 0 rgba(255,255,255,.96);
+          backdrop-filter: blur(32px) saturate(185%);
+          -webkit-backdrop-filter: blur(32px) saturate(185%);
+        }
+
+        .cf-glass-dark {
+          background:
+            linear-gradient(180deg, rgba(15,23,42,.78), rgba(15,23,42,.64));
+          border: 1px solid rgba(255,255,255,.13);
+          box-shadow:
+            0 24px 70px rgba(15,23,42,.20),
+            inset 0 1px 0 rgba(255,255,255,.10);
+          backdrop-filter: blur(28px) saturate(160%);
+          -webkit-backdrop-filter: blur(28px) saturate(160%);
+        }
+
+        .cf-liquid-btn {
+          position: relative;
+          overflow: hidden;
+          transform: translateZ(0);
+          transition:
+            transform .28s cubic-bezier(.16,1,.3,1),
+            box-shadow .28s ease,
+            background .28s ease;
+        }
+
+        .cf-liquid-btn::after {
+          content: "";
+          position: absolute;
+          inset: -30% auto -30% -35%;
+          width: 28%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,.7), transparent);
+          opacity: 0;
+          pointer-events: none;
+        }
+
+        .cf-liquid-btn:hover {
+          transform: translateY(-2px) scale(1.01);
+        }
+
+        .cf-liquid-btn:hover::after {
+          opacity: .8;
+          animation: cf-shimmer .8s cubic-bezier(.16,1,.3,1);
+        }
+
+        .cf-liquid-btn:active {
+          transform: translateY(0) scale(.985);
+        }
+
+        .cf-segment {
+          transition:
+            transform .22s cubic-bezier(.16,1,.3,1),
+            background .22s ease,
+            color .22s ease,
+            box-shadow .22s ease;
+        }
+
+        .cf-segment:active {
+          transform: scale(.96);
+        }
+
+        button, label[for], input[type="range"] { cursor: pointer; }
+        button:focus-visible, input:focus-visible, textarea:focus-visible {
+          outline: 3px solid rgba(10,132,255,.20);
+          outline-offset: 2px;
+        }
+
+        .cf-scrollbar::-webkit-scrollbar { width: 8px; }
+        .cf-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .cf-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(100,116,139,.26);
+          border-radius: 999px;
+        }
+
+        .cf-range {
+          accent-color: #0a84ff;
+        }
+      `}</style>
+
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="cf-orbit absolute -left-[12rem] -top-[14rem] h-[34rem] w-[34rem] rounded-full bg-[radial-gradient(circle,rgba(120,119,255,.34),rgba(120,119,255,0)_68%)] blur-2xl" />
+        <div className="cf-orbit absolute -right-[10rem] top-[4rem] h-[32rem] w-[32rem] rounded-full bg-[radial-gradient(circle,rgba(77,208,225,.30),rgba(77,208,225,0)_70%)] blur-2xl [animation-delay:-5s]" />
+        <div className="absolute bottom-[-16rem] left-[25%] h-[36rem] w-[36rem] rounded-full bg-[radial-gradient(circle,rgba(255,159,10,.18),rgba(255,159,10,0)_70%)] blur-3xl" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.20),rgba(255,255,255,.08))]" />
+      </div>
+      <div className="relative mx-auto max-w-[1900px] px-6 py-7 sm:px-8 lg:px-12">
+        <header className="cf-glass-strong sticky top-4 z-30 mb-6 flex items-center justify-between rounded-[24px] px-5 py-3.5 sm:px-6">
+          <div className="flex items-center gap-3">
+            <div className="grid h-11 w-11 place-items-center rounded-[14px] border border-white/80 bg-gradient-to-br from-white/90 via-[#dfe9ff]/85 to-[#d7f7ff]/80 shadow-[0_8px_22px_rgba(37,99,235,.15)]">
+              <Sparkles className="h-5 w-5 text-[#0a84ff]" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-semibold tracking-[-0.02em] text-slate-950">ContextForge</h1>
+                <span className="rounded-full border border-blue-200/80 bg-blue-50/80 px-2 py-0.5 text-[9px] font-semibold tracking-[0.12em] text-[#0a84ff]">2.1</span>
+              </div>
+              <p className="text-[11px] text-slate-500">local AI context compiler</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setHistoryOpen((value) => !value)}
+              className="cf-liquid-btn hidden items-center gap-2 rounded-full border border-slate-200/90 bg-white/92 px-4 py-2.5 text-xs font-semibold text-slate-800 shadow-[0_6px_18px_rgba(15,23,42,.10)] hover:bg-white hover:shadow-[0_9px_24px_rgba(15,23,42,.14)] sm:inline-flex"
+            >
+              <History className="h-3.5 w-3.5" />
+              History
+              {history.length > 0 && <span className="rounded-full bg-white/10 px-1.5 py-0.5 text-[10px]">{history.length}</span>}
+            </button>
+            <StatusPill online={online} version={engineVersion} />
+          </div>
+        </header>
+
+        {historyOpen && (
+          <div className="absolute right-6 top-[74px] z-40 w-[min(420px,calc(100vw-48px))] overflow-hidden rounded-2xl border border-white/10 bg-[#10131a] shadow-2xl shadow-black/50">
+            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+              <div>
+                <p className="text-sm font-semibold">Recent compilations</p>
+                <p className="text-xs text-slate-500">Stored only in this browser.</p>
+              </div>
+              {history.length > 0 && (
+                <button
+                  onClick={() => {
+                    setHistory([]);
+                    localStorage.removeItem(HISTORY_KEY);
+                  }}
+                  className="text-xs text-slate-500 hover:text-slate-800"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <div className="max-h-[430px] overflow-y-auto p-2">
+              {history.length === 0 ? (
+                <div className="p-8 text-center text-sm text-slate-500">No local history yet.</div>
+              ) : history.map((entry) => (
+                <button
+                  key={entry.id}
+                  onClick={() => restoreHistory(entry)}
+                  className="group w-full rounded-xl px-3 py-3 text-left transition hover:bg-white/[0.05]"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-medium text-slate-800">{entry.sourceLabel}</p>
+                      <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{entry.task}</p>
+                    </div>
+                    <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-slate-500 transition group-hover:text-slate-700" />
+                  </div>
+                  <div className="mt-2 flex items-center gap-3 text-[10px] uppercase tracking-[0.12em] text-slate-500">
+                    <span>{entry.result.reduction_percent}% saved</span>
+                    <span>{entry.result.retrieval_confidence ?? 0}% confidence</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <section className="cf-enter mb-6 overflow-hidden rounded-[34px] border border-white/70 bg-white/54 shadow-[0_30px_90px_rgba(55,65,81,.09)] backdrop-blur-[22px]">
+          <div className="grid lg:grid-cols-[1.15fr_0.85fr]">
+            <div className="relative p-8 sm:p-10 lg:p-12">
+              <div className="pointer-events-none absolute -left-10 -top-16 h-64 w-64 rounded-full bg-[#0a84ff]/12 blur-3xl" />
+              <div className="relative">
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/58 px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.17em] text-[#0a84ff] shadow-sm backdrop-blur-xl">
+                  <WandSparkles className="h-3.5 w-3.5" />
+                  Context intelligence workspace
+                </div>
+                <h2 className="max-w-5xl text-[44px] font-semibold leading-[1.01] tracking-[-0.055em] text-slate-950 sm:text-5xl lg:text-[66px]">
+                  Distill the signal.
+                  <span className="block bg-gradient-to-r from-[#0a84ff] via-[#5e5ce6] to-[#32ade6] bg-clip-text text-transparent">
+                    Keep the evidence.
+                  </span>
+                </h2>
+                <p className="mt-5 max-w-2xl text-[15px] leading-7 text-slate-500 sm:text-base">
+                  ContextForge ranks, compresses, and traces the source material your task actually needs — before it reaches a model.
+                </p>
+              </div>
+            </div>
+
+            <div className="relative border-t border-white/70 bg-white/34 p-6 backdrop-blur-2xl lg:border-l lg:border-t-0 lg:p-8">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(10,132,255,.15),transparent_45%)]" />
+              <div className="relative grid h-full gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                <FeatureStat icon={<Layers3 className="h-4 w-4" />} value="Hierarchical" label="section → sentence retrieval" />
+                <FeatureStat icon={<ShieldCheck className="h-4 w-4" />} value="Local-first" label="no paid model required" />
+                <FeatureStat icon={<Gauge className="h-4 w-4" />} value="Budget-aware" label="hard token ceiling" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-[230px_minmax(0,1fr)_minmax(0,1.55fr)]">
+          <aside className="cf-enter xl:sticky xl:top-28 xl:self-start">
+            <div className="cf-glass rounded-[28px] p-3">
+              <div className="px-3 pb-3 pt-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Workflow</p>
+              </div>
+
+              <RailStep
+                number="01"
+                label="Source"
+                detail={inputMode === "file" ? (file ? file.name : "Add a document") : (text.trim() ? `${text.length.toLocaleString()} chars` : "Paste source text")}
+                ready={inputMode === "file" ? Boolean(file) : Boolean(text.trim())}
+              />
+              <RailConnector ready={inputMode === "file" ? Boolean(file) : Boolean(text.trim())} />
+              <RailStep
+                number="02"
+                label="Task"
+                detail={task.trim() ? "Objective defined" : "Define what matters"}
+                ready={Boolean(task.trim())}
+              />
+              <RailConnector ready={Boolean(task.trim())} />
+              <RailStep
+                number="03"
+                label="Compile"
+                detail={`${modeInfo[mode].label} · ${budget.toLocaleString()} tokens`}
+                ready={Boolean(result)}
+                active={Boolean(task.trim()) && (inputMode === "file" ? Boolean(file) : Boolean(text.trim())) && !result}
+              />
+
+              <div className="mt-3 border-t border-slate-200/70 px-3 pt-4">
+                <div className="flex items-center justify-between text-[10px] text-slate-500">
+                  <span>Engine</span>
+                  <span className={online ? "text-emerald-300" : "text-rose-300"}>
+                    {online ? "Ready" : "Offline"}
+                  </span>
+                </div>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      result ? "w-full bg-emerald-400" :
+                      task.trim() && (inputMode === "file" ? file : text.trim()) ? "w-2/3 bg-indigo-400" :
+                      (inputMode === "file" ? file : text.trim()) ? "w-1/3 bg-indigo-400" :
+                      "w-[8%] bg-slate-600"
+                    }`}
+                  />
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <div className="cf-enter space-y-4 [animation-delay:60ms]">
+            <Panel className="overflow-hidden p-0 md:p-0">
+              <div className="border-b border-slate-200/75 px-6 py-5">
+                <div className="flex items-start justify-between gap-4">
+                  <SectionTitle number="01" title="Source material" subtitle="Bring in the material you want ContextForge to reason over." />
+                  <div className="flex rounded-[14px] border border-slate-200 bg-slate-100/80 p-1 shadow-inner">
+                    <Tab active={inputMode === "file"} onClick={() => setInputMode("file")}>Upload</Tab>
+                    <Tab active={inputMode === "text"} onClick={() => setInputMode("text")}>Paste</Tab>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6">
+                {inputMode === "file" ? (
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                    onDragLeave={() => setDragging(false)}
+                    onDrop={onDrop}
+                    className={`group relative overflow-hidden rounded-2xl border border-dashed px-6 py-12 text-center transition duration-300 ${
+                      dragging
+                        ? "border-[#0a84ff]/50 bg-[#0a84ff]/8"
+                        : "border-slate-200/80 bg-white/46 hover:border-[#0a84ff]/35 hover:bg-[#0a84ff]/[0.04]"
+                    }`}
+                  >
+                    <div className="pointer-events-none absolute inset-0 opacity-0 transition duration-300 group-hover:opacity-100">
+                      <div className="absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#0a84ff]/10 blur-3xl" />
+                    </div>
+                    {!file ? (
+                      <div className="relative">
+                        <div className="cf-float mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-indigo-300/15 bg-[#0a84ff]/10">
+                          <UploadCloud className="h-6 w-6 text-[#0a84ff]" />
+                        </div>
+                        <p className="mt-4 text-sm font-semibold text-slate-950">Drop PDF, DOCX, or TXT</p>
+                        <p className="mt-1.5 text-xs text-slate-500">Up to 25 MB · processed locally</p>
+                        <label className="cf-liquid-btn mt-5 inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#0a84ff]/20 bg-[#0a84ff] px-5 py-3 text-xs font-semibold text-white shadow-[0_10px_24px_rgba(10,132,255,.28)] hover:bg-[#0077ed] hover:shadow-[0_14px_30px_rgba(10,132,255,.34)]">
+                          Choose file
+                          <input className="hidden" type="file" accept=".pdf,.docx,.txt" onChange={(e) => acceptFile(e.target.files?.[0] ?? null)} />
+                        </label>
+                      </div>
+                    ) : (
+                      <div className="relative flex items-center justify-between gap-4 text-left">
+                        <div className="flex min-w-0 items-center gap-4">
+                          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-indigo-300/20 bg-[#0a84ff]/10">
+                            <FileText className="h-5 w-5 text-[#0a84ff]" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-950">{file.name}</p>
+                            <p className="mt-1 text-xs text-slate-500">{fileSize} · ready to compile</p>
+                          </div>
+                        </div>
+                        <button onClick={() => setFile(null)} className="rounded-xl border border-slate-200/80 px-3 py-2 text-xs text-slate-500 transition hover:border-slate-500 hover:bg-slate-200 hover:text-white">
+                          Replace
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <textarea
+                      value={text}
+                      onChange={(e) => setText(e.target.value)}
+                      placeholder="Paste documentation, policies, research text, logs, notes, or a long prompt..."
+                      className="min-h-60 w-full resize-y rounded-2xl border border-slate-200/75 bg-white/58 p-5 text-sm leading-7 text-slate-800 outline-none transition placeholder:text-slate-500 focus:border-indigo-300/50 focus:ring-4 focus:ring-indigo-500/10"
+                    />
+                    <div className="mt-2 flex justify-between text-[11px] text-slate-500">
+                      <span>Plain text source</span>
+                      <span>{text.length.toLocaleString()} characters</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Panel>
+
+            <Panel>
+              <SectionTitle number="02" title="Retrieval objective" subtitle="Describe exactly what information deserves to survive compression." />
+
+              <div className="mt-5 flex flex-wrap gap-2">
+                {presets.map((preset) => (
+                  <button
+                    key={preset.name}
+                    onClick={() => setTask(preset.task)}
+                    className="rounded-full border border-slate-200/80 bg-slate-200/45 px-3.5 py-2 text-xs text-slate-500 transition duration-200 hover:-translate-y-0.5 hover:border-indigo-300/35 hover:bg-[#0a84ff]/10 hover:text-[#0a84ff] active:translate-y-0"
+                  >
+                    {preset.name}
+                  </button>
+                ))}
+              </div>
+
+              <textarea
+                value={task}
+                onChange={(e) => setTask(e.target.value)}
+                placeholder="Example: Extract authentication rules, expiry limits, MFA requirements, and account lockout behavior."
+                className="mt-4 min-h-36 w-full resize-y rounded-2xl border border-slate-200/75 bg-white/58 p-5 text-sm leading-7 text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-indigo-300/50 focus:ring-4 focus:ring-indigo-500/10"
+              />
+            </Panel>
+
+            <Panel>
+              <SectionTitle number="03" title="Compression strategy" subtitle="Control how much supporting context ContextForge keeps." />
+
+              <div className="mt-5 grid gap-3">
+                {Object.entries(modeInfo).map(([key, info]) => (
+                  <button
+                    key={key}
+                    onClick={() => setMode(key)}
+                    className={`group flex items-center justify-between gap-4 rounded-2xl border p-4 text-left transition duration-300 ${
+                      mode === key
+                        ? "border-[#0a84ff]/55 bg-gradient-to-r from-[#e7f3ff] via-[#eef4ff] to-[#f2efff] shadow-[0_12px_28px_rgba(10,132,255,.14)] ring-1 ring-[#0a84ff]/10"
+                        : "border-slate-200/75 bg-slate-950/28 hover:border-slate-500/70 hover:bg-slate-200/45"
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-sm font-semibold ${mode === key ? "text-[#0a84ff]" : "text-slate-800"}`}>{info.label}</span>
+                        <span className="text-[10px] uppercase tracking-[0.12em] text-slate-500">{info.badge}</span>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">{info.description}</p>
+                    </div>
+                    <div className={`grid h-8 w-8 place-items-center rounded-full border transition ${mode === key ? "border-indigo-300/30 bg-[#0a84ff]/10 text-[#0a84ff]" : "border-slate-700 text-slate-700 group-hover:text-slate-500"}`}>
+                      {mode === key ? <Check className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-5 rounded-2xl border border-slate-200/75 bg-white/46 p-5">
+                <div className="flex items-end justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-700">Token ceiling</p>
+                    <p className="mt-1 text-[11px] text-slate-500">Maximum size of the compiled context.</p>
+                  </div>
+                  <input
+                    type="number"
+                    min={20}
+                    max={100000}
+                    value={budget}
+                    onChange={(e) => setBudget(Math.max(20, Number(e.target.value) || 20))}
+                    className="w-28 rounded-xl border border-slate-200/80 bg-white/75 px-3 py-2.5 text-right text-sm font-semibold text-white outline-none focus:border-indigo-400/50"
+                  />
+                </div>
+                <input
+                  type="range"
+                  min={100}
+                  max={8000}
+                  step={100}
+                  value={Math.min(8000, Math.max(100, budget))}
+                  onChange={(e) => setBudget(Number(e.target.value))}
+                  className="cf-range mt-5 w-full"
+                />
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {[500, 1000, 2000, 4000].map((value) => (
+                    <button
+                      key={value}
+                      onClick={() => setBudget(value)}
+                      className={`rounded-lg border px-3 py-1.5 text-[11px] transition ${
+                        budget === value
+                          ? "border-indigo-300/35 bg-[#0a84ff]/10 text-[#0a84ff]"
+                          : "border-slate-200/80 text-slate-500 hover:border-slate-500 hover:text-slate-800"
+                      }`}
+                    >
+                      {value.toLocaleString()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {error && (
+                <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>
+              )}
+
+              <div className="mt-5 grid gap-2 sm:grid-cols-[1fr_auto]">
+                <button
+                  onClick={compile}
+                  disabled={loading}
+                  className="cf-liquid-btn group flex min-h-[58px] items-center justify-center gap-2.5 rounded-full border border-[#006edc]/35 bg-gradient-to-b from-[#2da3ff] via-[#0a84ff] to-[#006edc] px-8 py-4 text-[15px] font-semibold tracking-[-0.01em] text-white shadow-[0_16px_34px_rgba(10,132,255,.34),inset_0_1px_0_rgba(255,255,255,.55)] ring-1 ring-white/45 hover:shadow-[0_20px_42px_rgba(10,132,255,.42)] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                  {loading ? loadingStages[loadingStage] : "Compile context"}
+                  {!loading && <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />}
+                </button>
+                <button
+                  onClick={resetWorkbench}
+                  className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-slate-200/75 bg-white/52 px-4 text-xs text-slate-500 transition duration-200 hover:-translate-y-0.5 hover:border-slate-500 hover:bg-slate-200 hover:text-slate-800 active:translate-y-0"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Reset
+                </button>
+              </div>
+
+              {loading && (
+                <div className="mt-4 grid grid-cols-4 gap-2">
+                  {loadingStages.map((stage, index) => (
+                    <div key={stage} className="min-w-0">
+                      <div className={`h-1.5 rounded-full transition-all ${index <= loadingStage ? "bg-indigo-400" : "bg-slate-200"}`} />
+                      <p className={`mt-1.5 truncate text-[9px] ${index === loadingStage ? "text-indigo-300" : "text-slate-500"}`}>{stage}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Panel>
+          </div>
+
+          <section className="cf-enter [animation-delay:100ms]">
+            <div className="min-h-[940px] overflow-hidden rounded-[34px] border border-white/75 bg-white/72 shadow-[0_28px_90px_rgba(55,65,81,.10)] backdrop-blur-[26px]">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/70 bg-white/38 px-6 py-5 backdrop-blur-xl sm:px-7">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-[#0a84ff] shadow-[0_0_16px_rgba(10,132,255,.42)]" />
+                    <p className="text-base font-semibold text-slate-950">Context inspector</p>
+                  </div>
+                  <p className="mt-1.5 text-xs text-slate-500">Compiled output, evidence lineage, and retrieval diagnostics.</p>
+                </div>
+
+                {result ? (
+                  <div className="flex flex-wrap gap-2">
+                    <ActionButton onClick={copyOutput} icon={<Copy className="h-3.5 w-3.5" />}>Copy</ActionButton>
+                    <ActionButton onClick={() => exportOutput("md")} icon={<Download className="h-3.5 w-3.5" />}>.md</ActionButton>
+                    <ActionButton onClick={() => exportOutput("txt")} icon={<Download className="h-3.5 w-3.5" />}>.txt</ActionButton>
+                  </div>
+                ) : (
+                  <div className="rounded-full border border-white/80 bg-white/62 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 shadow-sm">
+                    Awaiting compile
+                  </div>
+                )}
+              </div>
+
+              {!result ? (
+                <InspectorEmpty />
+              ) : (
+                <div className="p-5 sm:p-6">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                    <Metric label="Source" value={result.original_tokens.toLocaleString()} unit="tokens" />
+                    <Metric label="Final" value={result.optimized_tokens.toLocaleString()} unit="tokens" />
+                    <Metric label="Saved" value={result.tokens_saved.toLocaleString()} unit="tokens" positive />
+                    <Metric label="Reduction" value={`${result.reduction_percent}%`} positive />
+                    <Metric label="Confidence" value={`${result.retrieval_confidence ?? 0}%`} />
+                  </div>
+
+                  <div className="mt-4 grid gap-3 lg:grid-cols-[1.25fr_0.75fr]">
+                    <div className="rounded-2xl border border-slate-200/75 bg-white/46 p-5">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <p className="text-xs font-semibold text-slate-700">Budget utilization</p>
+                          <p className="mt-1 text-[11px] text-slate-500">{result.optimized_tokens.toLocaleString()} of {budget.toLocaleString()} tokens</p>
+                        </div>
+                        <span className="text-sm font-semibold text-[#0a84ff]">{budgetUsage}%</span>
+                      </div>
+                      <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-slate-200">
+                        <div className="h-full rounded-full bg-gradient-to-r from-[#0a84ff] via-[#5e5ce6] to-[#32ade6] transition-all duration-700" style={{ width: `${budgetUsage}%` }} />
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200/75 bg-white/46 p-5">
+                      <p className="text-xs font-semibold text-slate-700">Evidence selected</p>
+                      <div className="mt-2 flex items-baseline gap-2">
+                        <span className="text-3xl font-semibold text-white">{result.processing_stats?.sentences_selected ?? result.sources?.length ?? 0}</span>
+                        <span className="text-xs text-slate-500">units</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/75">
+                    <div className="flex gap-1">
+                      <ResultTabButton active={resultTab === "output"} onClick={() => setResultTab("output")} icon={<FileText className="h-3.5 w-3.5" />}>Output</ResultTabButton>
+                      <ResultTabButton active={resultTab === "sources"} onClick={() => setResultTab("sources")} icon={<FileSearch className="h-3.5 w-3.5" />}>Evidence <span className="text-[10px] text-slate-500">{result.sources?.length ?? 0}</span></ResultTabButton>
+                      <ResultTabButton active={resultTab === "diagnostics"} onClick={() => setResultTab("diagnostics")} icon={<BarChart3 className="h-3.5 w-3.5" />}>Diagnostics</ResultTabButton>
+                    </div>
+                  </div>
+
+                  {resultTab === "output" && (
+                    <div className="pt-5">
+                      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap gap-1 rounded-xl border border-slate-200/75 bg-white/46 p-1">
+                          {(["raw", "chatgpt", "claude", "gemini"] as OutputTarget[]).map((target) => (
+                            <button
+                              key={target}
+                              onClick={() => setOutputTarget(target)}
+                              className={`rounded-lg px-3 py-2 text-[11px] font-medium capitalize transition ${
+                                outputTarget === target ? "bg-slate-100 text-slate-950 shadow-sm" : "text-slate-500 hover:bg-slate-200/60 hover:text-slate-800"
+                              }`}
+                            >
+                              {target === "raw" ? "Context only" : target}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                          AI-ready
+                        </div>
+                      </div>
+
+                      <div className="overflow-hidden rounded-2xl border border-slate-200/75 bg-white/58 shadow-inner shadow-black/20">
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/75 px-5 py-4">
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Compiled context</p>
+                            <p className="mt-1 max-w-xl truncate text-xs text-slate-500">{result.filename ?? sourceLabel}</p>
+                          </div>
+                          <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.1em] text-emerald-300">{outputTarget}</span>
+                        </div>
+                        <div className="cf-scrollbar max-h-[640px] overflow-y-auto whitespace-pre-wrap p-6 font-mono text-[13.5px] leading-7 text-slate-700">{formattedOutput}</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {resultTab === "sources" && (
+                    <div className="pt-5">
+                      <div className="mb-4">
+                        <p className="text-xs font-semibold text-slate-700">Evidence lineage</p>
+                        <p className="mt-1 text-[11px] text-slate-500">Every retained sentence with its page, section, and ranking signals.</p>
+                      </div>
+                      <div className="space-y-3">
+                        {(result.sources ?? []).map((source, index) => (
+                          <div key={`${source.sentence}-${index}`} className="rounded-2xl border border-slate-200/75 bg-white/46 p-5 transition hover:border-slate-600/70">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.12em] text-slate-500">
+                                <span>Evidence {String(index + 1).padStart(2, "0")}</span>
+                                {source.page != null && <span className="rounded-md bg-slate-200/80 px-2 py-1">Page {source.page}</span>}
+                                {source.section && <span className="rounded-md bg-slate-200/80 px-2 py-1">{source.section}</span>}
+                              </div>
+                              <div className="flex gap-3 text-[10px] text-slate-500">
+                                <span>semantic {(source.semantic_score * 100).toFixed(0)}%</span>
+                                <span>priority {(source.priority_score * 100).toFixed(0)}</span>
+                              </div>
+                            </div>
+                            <p className="mt-3 text-sm leading-7 text-slate-800">{source.sentence}</p>
+                          </div>
+                        ))}
+                        {(!result.sources || result.sources.length === 0) && (
+                          <div className="rounded-2xl border border-slate-200/75 p-10 text-center text-sm text-slate-500">No source trace data returned.</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {resultTab === "diagnostics" && (
+                    <div className="pt-5">
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <DiagnosticCard label="Chunks ranked" value={`${result.processing_stats?.chunks_selected ?? 0}/${result.processing_stats?.chunks_created ?? 0}`} detail="hierarchical pass" icon={<Layers3 className="h-4 w-4" />} />
+                        <DiagnosticCard label="Candidates" value={`${result.processing_stats?.candidate_sentences ?? 0}`} detail="sentence ranking pool" icon={<Target className="h-4 w-4" />} />
+                        <DiagnosticCard label="Duplicates removed" value={`${result.processing_stats?.duplicates_suppressed ?? 0}`} detail="near-duplicate filter" icon={<ListChecks className="h-4 w-4" />} />
+                        <DiagnosticCard label="Latency" value={`${result.processing_stats?.elapsed_ms ?? 0} ms`} detail="local compile time" icon={<Clock3 className="h-4 w-4" />} />
+                      </div>
+
+                      <div className="mt-4 rounded-2xl border border-slate-200/75 bg-white/46 p-5">
+                        <p className="text-xs font-semibold text-slate-700">Retrieval details</p>
+                        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-5 text-xs sm:grid-cols-3">
+                          <Diagnostic label="Source sentences" value={`${result.processing_stats?.source_sentences ?? 0}`} />
+                          <Diagnostic label="Selected sentences" value={`${result.processing_stats?.sentences_selected ?? 0}`} />
+                          <Diagnostic label="Selected pages" value={`${result.processing_stats?.selected_pages ?? 0}`} />
+                          <Diagnostic label="Selected sections" value={`${result.processing_stats?.selected_sections ?? 0}`} />
+                          <Diagnostic label="Embedding cache" value={`${result.processing_stats?.embedding_cache_items ?? 0}`} />
+                          <Diagnostic label="Headings detected" value={`${result.headings_detected ?? 0}`} />
+                          <Diagnostic label="Threshold" value={`${result.threshold ?? "—"}`} />
+                          <Diagnostic label="Output mode" value={`${result.output_mode ?? "—"}`} />
+                          <Diagnostic label="Selected tokens" value={`${result.selected_context_tokens ?? result.optimized_tokens}`} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </section>
+        </section>
+
+        <footer className="flex flex-col gap-2 py-6 text-[11px] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+          <p>ContextForge 2.1 · local-first context compilation</p>
+          <p>PDF · DOCX · TXT · Paste text · Browser-local history</p>
+        </footer>
+      </div>
+
+      {toast && (
+        <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-full cf-glass-strong px-4 py-2.5 text-xs font-medium text-slate-800">
+          <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          {toast}
+        </div>
+      )}
+    </main>
+  );
+}
+
+function InspectorEmpty() {
+  return (
+    <div className="relative flex min-h-[810px] flex-col overflow-hidden">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute left-1/2 top-[38%] h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#0a84ff]/8 blur-3xl" />
+        <div className="absolute inset-x-12 top-28 h-px bg-gradient-to-r from-transparent via-slate-700/60 to-transparent" />
+      </div>
+
+      <div className="relative flex flex-1 flex-col items-center justify-center px-6 py-14 text-center">
+        <div className="relative">
+          <div className="cf-float grid h-20 w-20 place-items-center rounded-[24px] border border-white/80 bg-gradient-to-br from-white/80 via-[#e7f2ff]/76 to-[#e7fbff]/72 shadow-[0_20px_60px_-30px_rgba(99,102,241,.8)]">
+            <Activity className="h-8 w-8 text-[#0a84ff]/80" />
+          </div>
+          <div className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-slate-950 bg-[#0a84ff] shadow-[0_0_18px_rgba(165,180,252,.9)]" />
+        </div>
+
+        <p className="mt-7 text-xl font-semibold tracking-tight text-slate-950">Your context inspector is empty</p>
+        <p className="mx-auto mt-2 max-w-lg text-sm leading-7 text-slate-500">
+          Add source material, define what matters, and compile. ContextForge will expose the compressed output, evidence trail, and retrieval diagnostics here.
+        </p>
+
+        <div className="mt-9 grid w-full max-w-3xl gap-3 sm:grid-cols-3">
+          <EmptyFeature icon={<FileSearch className="h-4 w-4" />} title="Evidence-aware" text="Retain page, section, and sentence traceability." />
+          <EmptyFeature icon={<Gauge className="h-4 w-4" />} title="Budget-controlled" text="Fit the selected signal to a deliberate token ceiling." />
+          <EmptyFeature icon={<Clipboard className="h-4 w-4" />} title="Model-ready" text="Format the result for ChatGPT, Claude, Gemini, or raw use." />
+        </div>
+
+        <div className="mt-7 w-full max-w-3xl rounded-2xl border border-slate-200/75 bg-slate-950/30 p-5">
+          <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+            <span>Local pipeline</span>
+            <span>4 stages</span>
+          </div>
+          <div className="mt-5 grid grid-cols-4 gap-2">
+            {["Parse", "Retrieve", "Deduplicate", "Pack"].map((label, index) => (
+              <div key={label} className="group rounded-xl border border-slate-200/75 bg-white/48 px-2 py-4 text-center transition duration-300 hover:-translate-y-1 hover:border-indigo-300/25 hover:bg-indigo-400/[0.05]">
+                <p className="text-[9px] font-semibold text-slate-700">0{index + 1}</p>
+                <p className="mt-1.5 text-xs font-medium text-slate-500 group-hover:text-[#0a84ff]">{label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RailStep({
+  number,
+  label,
+  detail,
+  ready,
+  active = false,
+}: {
+  number: string;
+  label: string;
+  detail: string;
+  ready: boolean;
+  active?: boolean;
+}) {
+  return (
+    <div className={`rounded-2xl border p-3.5 transition duration-300 ${
+      ready
+        ? "border-emerald-300/50 bg-emerald-50/70"
+        : active
+          ? "border-[#0a84ff]/25 bg-[#0a84ff]/8"
+          : "border-transparent bg-transparent hover:bg-slate-200/40"
+    }`}>
+      <div className="flex items-start gap-3">
+        <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl border text-[10px] font-semibold ${
+          ready
+            ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-300"
+            : active
+              ? "border-indigo-300/25 bg-[#0a84ff]/10 text-[#0a84ff]"
+              : "border-slate-700 bg-white/50 text-slate-500"
+        }`}>
+          {ready ? <Check className="h-3.5 w-3.5" /> : number}
+        </div>
+        <div className="min-w-0">
+          <p className={`text-xs font-semibold ${ready ? "text-slate-800" : active ? "text-[#0a84ff]" : "text-slate-500"}`}>{label}</p>
+          <p className="mt-1 truncate text-[10px] leading-4 text-slate-500">{detail}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RailConnector({ ready }: { ready: boolean }) {
+  return (
+    <div className="ml-[27px] h-4 w-px bg-slate-700/55">
+      <div className={`h-full w-px transition-colors duration-500 ${ready ? "bg-emerald-400/50" : "bg-transparent"}`} />
+    </div>
+  );
+}
+
+function Panel({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <div className={`rounded-[28px] border border-white/75 bg-white/68 p-6 shadow-[0_20px_70px_rgba(55,65,81,.08)] backdrop-blur-[22px] transition duration-300 hover:bg-white/78 md:p-7 ${className}`}>{children}</div>;
+}
+
+function SectionTitle({ number, title, subtitle }: { number: string; title: string; subtitle: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="mt-0.5 rounded-lg border border-slate-200/80 bg-slate-200/60 px-2.5 py-1.5 text-[10px] font-semibold text-slate-500">{number}</span>
+      <div>
+        <p className="text-[15px] font-semibold tracking-[-0.01em] text-slate-950">{title}</p>
+        <p className="mt-1.5 text-xs leading-5 text-slate-500">{subtitle}</p>
+      </div>
+    </div>
+  );
+}
+
+function StatusPill({ online, version }: { online: boolean | null; version: string }) {
+  const text = online === null ? "Checking" : online ? "Engine online" : "Engine offline";
+  const dot = online === null ? "bg-amber-400" : online ? "bg-emerald-400" : "bg-red-400";
+  return (
+    <div className="flex items-center gap-2 rounded-xl border border-slate-200/75 bg-white/62 px-3 py-2 text-xs text-slate-500 shadow-sm backdrop-blur">
+      <span className={`h-2 w-2 rounded-full ${dot}`} />
+      <span className="hidden sm:inline">{text}</span>
+      {online && <span className="text-[10px] text-slate-500">v{version}</span>}
+    </div>
+  );
+}
+
+function Tab({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return <button onClick={onClick} className={`rounded-md px-3.5 py-2 text-xs font-medium transition duration-200 ${active ? "bg-slate-100 text-slate-950 shadow-sm" : "text-slate-500 hover:bg-slate-200/60 hover:text-slate-800"}`}>{children}</button>;
+}
+
+function FeatureStat({ icon, value, label }: { icon: ReactNode; value: string; label: string }) {
+  return (
+    <div className="min-w-[138px] rounded-2xl border border-slate-200/75 bg-white/62 p-4 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-indigo-300/35 hover:bg-slate-200/75">
+      <div className="text-[#0a84ff]">{icon}</div>
+      <p className="mt-3 text-sm font-semibold">{value}</p>
+      <p className="mt-1 text-[11px] text-slate-500">{label}</p>
+    </div>
+  );
+}
+
+function Metric({ label, value, unit, positive }: { label: string; value: string; unit?: string; positive?: boolean }) {
+  return (
+    <div className="rounded-2xl border border-white/80 bg-white/58 p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-white/88">
+      <p className="text-[9px] font-medium uppercase tracking-[0.14em] text-slate-500">{label}</p>
+      <p className={`mt-2.5 text-xl font-semibold ${positive ? "text-emerald-300" : "text-slate-950"}`}>{value}</p>
+      {unit && <p className="mt-0.5 text-[10px] text-zinc-800">{unit}</p>}
+    </div>
+  );
+}
+
+function ResultTabButton({ active, onClick, icon, children }: { active: boolean; onClick: () => void; icon: ReactNode; children: ReactNode }) {
+  return (
+    <button onClick={onClick} className={`inline-flex items-center gap-2 border-b-2 px-4 py-3.5 text-xs font-medium transition ${active ? "border-indigo-400 text-[#0a84ff]" : "border-transparent text-slate-500 hover:text-slate-800"}`}>
+      {icon}{children}
+    </button>
+  );
+}
+
+function DiagnosticCard({ label, value, detail, icon }: { label: string; value: string; detail: string; icon: ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-slate-200/75 bg-white/46 p-5">
+      <div className="text-indigo-300/80">{icon}</div>
+      <p className="mt-3 text-xl font-semibold text-slate-950">{value}</p>
+      <p className="mt-1 text-xs font-medium text-slate-500">{label}</p>
+      <p className="mt-1 text-[10px] text-slate-500">{detail}</p>
+    </div>
+  );
+}
+
+function Diagnostic({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500">{label}</p>
+      <p className="mt-1 break-words font-medium text-slate-800">{value}</p>
+    </div>
+  );
+}
+
+function ActionButton({ onClick, icon, children }: { onClick: () => void; icon: ReactNode; children: ReactNode }) {
+  return (
+    <button onClick={onClick} className="inline-flex items-center gap-2 rounded-lg border border-slate-200/75 bg-white/56 px-3 py-2 text-xs text-slate-500 transition duration-200 hover:-translate-y-0.5 hover:border-indigo-300/35 hover:bg-[#0a84ff]/10 hover:text-white active:translate-y-0">
+      {icon}{children}
+    </button>
+  );
+}
+
+function EmptyFeature({ icon, title, text }: { icon: ReactNode; title: string; text: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200/75 bg-white/48 p-4 text-left transition duration-300 hover:-translate-y-1 hover:border-indigo-300/30 hover:bg-slate-200/60">
+      <div className="text-indigo-300/70">{icon}</div>
+      <p className="mt-3 text-sm font-semibold text-slate-700">{title}</p>
+      <p className="mt-1 text-[11px] leading-5 text-slate-500">{text}</p>
+    </div>
+  );
+}
