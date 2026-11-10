@@ -46,7 +46,7 @@ export default async function ReportPage({ params }: Props) {
     : "Not available";
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-black text-white">
+    <main className="rd-results relative min-h-screen overflow-hidden">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-1/2 top-[-260px] h-[560px] w-[980px] -translate-x-1/2 rounded-full bg-emerald-500/10 blur-[150px]" />
         <div className="absolute left-[7%] top-[34%] h-[320px] w-[320px] rounded-full bg-cyan-500/5 blur-[130px]" />
