@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+<title id="title">RepoDoctor — Repository health, made understandable</title>
+<desc id="desc">An editorial style midnight navy banner with mint and blue status graphics and the RepoDoctor title</desc>
+<defs>
+  <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#0B1426"/><stop offset="1" stop-color="#122D3B"/></linearGradient>
+  <linearGradient id="accent" x1="0" x2="1"><stop stop-color="#6FE8CA"/><stop offset="1" stop-color="#61BDF2"/></linearGradient>
+  <pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="1.1" fill="#9BD9DA" opacity=".13"/></pattern>
+  <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#020712" flood-opacity=".35"/></filter>
+</defs>
+<rect width="1200" height="360" rx="26" fill="url(#bg)"/>
+<rect width="1200" height="360" rx="26" fill="url(#dots)"/>
+<rect x="52" y="49" width="183" height="31" rx="15.5" fill="#163845" stroke="#387D83"/>
+<circle cx="73" cy="64.5" r="5" fill="#77E8C9"/>
+<text x="88" y="69.5" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" letter-spacing="1.5" fill="#A8EBDD">OPEN SOURCE TOOL</text>
+<text x="52" y="167" font-family="Arial, Helvetica, sans-serif" font-size="69" font-weight="800" letter-spacing="-3" fill="#F4FBFF">Repo<tspan fill="#77E8C9">Doctor</tspan></text>
+<text x="55" y="212" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#D6E7EF">Repository health, made understandable.</text>
+<rect x="54" y="243" width="440" height="1" fill="#456171" opacity=".8"/>
+<text x="55" y="277" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#9CC4CF">ANALYZE</text><circle cx="166" cy="270" r="3" fill="#68B5C5"/>
+<text x="186" y="277" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#9CC4CF">COMPARE</text><circle cx="307" cy="270" r="3" fill="#68B5C5"/>
+<text x="327" y="277" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#9CC4CF">IMPROVE</text>
+<g transform="translate(720 55)" filter="url(#shadow)">
+<rect x="0" y="0" width="410" height="253" rx="19" fill="#142D3B" stroke="#426575"/>
+<rect x="25" y="22" width="360" height="36" rx="9" fill="#1D4150"/>
+<circle cx="46" cy="40" r="7" fill="#79E8CA"/>
+<text x="66" y="46" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#EAF9FC">Repository checkup</text>
+<text x="28" y="95" font-family="Arial, Helvetica, sans-serif" font-size="12" letter-spacing="1.4" fill="#9EBAC7">ENGINEERING SIGNALS</text>
+<rect x="28" y="112" width="249" height="11" rx="5.5" fill="#315465"/><rect x="28" y="112" width="205" height="11" rx="5.5" fill="url(#accent)"/>
+<rect x="28" y="141" width="249" height="11" rx="5.5" fill="#315465"/><rect x="28" y="141" width="161" height="11" rx="5.5" fill="#69BFE5"/>
+<rect x="28" y="170" width="249" height="11" rx="5.5" fill="#315465"/><rect x="28" y="170" width="227" height="11" rx="5.5" fill="#71DBBB"/>
+<text x="294" y="122" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#B7D7E0">Docs</text>
+<text x="294" y="151" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#B7D7E0">Tests</text>
+<text x="294" y="180" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#B7D7E0">CI/CD</text>
+<rect x="25" y="204" width="360" height="28" rx="8" fill="#20493F"/>
+<circle cx="42" cy="218" r="5.5" fill="#79E8CA"/>
+<text x="56" y="223" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#C0F5E4">From repository signals to next steps</text>
+</g>
+</svg>
