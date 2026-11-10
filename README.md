@@ -84,7 +84,7 @@ Enter a public GitHub repository URL to inspect its engineering health.
 
 The report combines category scores, repository metadata, passed checks, critical findings, and recommendations into an understandable assessment.
 
-![RepoDoctor Homepage](https://raw.githubusercontent.com/Jewel777/RepoDoctor/main/Home.png)
+![RepoDoctor Homepage](https://raw.githubusercontent.com/Jewel777/RepoDoctor/main/Home11.png)
 
 <div align="center">
 
