@@ -100,7 +100,7 @@ RepoDoctor v1.1 introduces side-by-side repository comparison.
 
 Understand how two open-source projects differ in documentation, security, testing, maintenance, automation, and other engineering categories.
 
-![RepoDoctor Comparison](https://raw.githubusercontent.com/Jewel777/RepoDoctor/main/compare.png)
+![RepoDoctor Comparison](https://raw.githubusercontent.com/Jewel777/RepoDoctor/main/compare11.png)
 
 <div align="center">
 
